@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نظام القمة الرسمي</title>
-    
+
     <!-- Scripts -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -14,7 +14,7 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, getDocs, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, getDocs, where, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -30,7 +30,8 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        window.FB = { db, auth, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, getDocs, where, signInAnonymously, onAuthStateChanged, serverTimestamp };
+        // Expose Firebase to Window for React
+        window.FB = { db, auth, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, getDocs, where, signInAnonymously, onAuthStateChanged, serverTimestamp, orderBy, limit };
     </script>
 
     <style>
@@ -96,18 +97,9 @@
         .animate-fade { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 
-        .rank-gold { 
-            background: linear-gradient(135deg, #fbbf24 0%, #b45309 100%) !important; 
-            color: #000 !important; 
-            box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
-            border: 1px solid #fbbf24;
-        }
-        .rank-silver { 
-            background: linear-gradient(135deg, #94a3b8 0%, #475569 100%) !important; 
-            color: #fff !important; 
-            box-shadow: 0 0 15px rgba(148, 163, 184, 0.3);
-            border: 1px solid #94a3b8;
-        }
+        .rank-1 { background: linear-gradient(135deg, #fbbf24, #d97706); color: #000; font-weight: 800; box-shadow: 0 0 20px rgba(251, 191, 36, 0.3); }
+        .rank-2 { background: linear-gradient(135deg, #94a3b8, #64748b); color: #000; font-weight: 700; }
+        .rank-3 { background: linear-gradient(135deg, #b45309, #78350f); color: #fff; font-weight: 700; }
         
         .btn-action { transition: all 0.2s ease; position: relative; overflow: hidden; }
         .btn-action:active { transform: scale(0.96); }
@@ -167,7 +159,7 @@
     const { useState, useEffect } = React;
 
     const _AK = "c29uIG9mIGFiZA=="; 
-    const _PK = "QVJBU1NfMjMxMDIz";    
+    const _PK = "QVJBU1NfMjMxMDIz";     
 
     const TRANSLATIONS = {
         AR: {
@@ -191,7 +183,11 @@
             passHeader: "كلمة المرور",
             delConfirm: "هل أنت متأكد من رغبتك في الحذف؟ سيتم إخفاء نتائج الطلاب لهذه المادة.",
             deleteBtn: "حذف",
-            score: "النتيجة"
+            score: "النتيجة",
+            leaderboardTitle: "أوائل الطلبة",
+            rank: "المركز",
+            student: "الطالب",
+            points: "النقاط"
         },
         KU: {
             basmalah: "بەناوی خودایەک کە ئێمەی دروستکردووە و بۆ لای ئەویش دەگەڕێینەوە",
@@ -214,7 +210,11 @@
             passHeader: "وشەی نهێنی",
             delConfirm: "ئایا دڵنیای لە سڕینەوە؟",
             deleteBtn: "سڕینەوە",
-            score: "نمرە"
+            score: "نمرە",
+            leaderboardTitle: "یەکەمەکان",
+            rank: "پلە",
+            student: "خوێندکار",
+            points: "خاڵ"
         },
         TR: {
             basmalah: "Bizi yaratan ve dönüşümüz O'na olan Allah'ın adıyla",
@@ -237,7 +237,11 @@
             passHeader: "Şifre",
             delConfirm: "Silmek istediğinizden emin misiniz?",
             deleteBtn: "Sil",
-            score: "Puan"
+            score: "Puan",
+            leaderboardTitle: "Liderler",
+            rank: "Sıra",
+            student: "Öğrenci",
+            points: "Puan"
         },
         EN: {
             basmalah: "In the name of Allah who created us and to Whom we shall return",
@@ -260,7 +264,11 @@
             passHeader: "Password",
             delConfirm: "Are you sure you want to delete?",
             deleteBtn: "Delete",
-            score: "Score"
+            score: "Score",
+            leaderboardTitle: "Top Students",
+            rank: "Rank",
+            student: "Student",
+            points: "Points"
         }
     };
 
@@ -280,8 +288,13 @@
             document.body.setAttribute('data-theme', theme);
         }, [theme]);
 
+        // CRITICAL PERFORMANCE FIX FOR 400 STUDENTS
+        // 1. Heartbeat increased to 5 minutes to reduce writes
+        // 2. onSnapshot only runs for ADMIN to prevent 400x400 reads
         useEffect(() => {
             if (!user) return;
+            
+            // Reduced heartbeat frequency to protect quota (5 mins)
             const heartbeat = setInterval(() => {
                 if (user && user.role !== 'admin') {
                     try {
@@ -290,23 +303,32 @@
                         });
                     } catch(e) {}
                 }
-            }, 60000);
+            }, 300000); // 300000ms = 5 minutes
 
-            const q = window.FB.query(window.FB.collection(window.FB.db, "users"));
-            const unsub = window.FB.onSnapshot(q, (snap) => {
-                const now = new Date();
-                const activeThreshold = 5 * 60 * 1000;
-                const count = snap.docs.filter(doc => {
-                    const data = doc.data();
-                    if (data.role === 'admin') return false;
-                    if (data.lastSeen) {
-                        const lastSeenDate = data.lastSeen.toDate();
-                        return (now - lastSeenDate) < activeThreshold;
-                    }
-                    return false;
-                }).length;
-                setOnlineCount(count);
-            });
+            let unsub = () => {};
+
+            // Only ADMIN listens to all users status
+            if (user.role === 'admin') {
+                const q = window.FB.query(window.FB.collection(window.FB.db, "users"));
+                unsub = window.FB.onSnapshot(q, (snap) => {
+                    const now = new Date();
+                    const activeThreshold = 6 * 60 * 1000; // Slightly larger window for 5min heartbeat
+                    const count = snap.docs.filter(doc => {
+                        const data = doc.data();
+                        if (data.role === 'admin') return false;
+                        if (data.lastSeen) {
+                            const lastSeenDate = data.lastSeen.toDate();
+                            return (now - lastSeenDate) < activeThreshold;
+                        }
+                        return false;
+                    }).length;
+                    setOnlineCount(count);
+                });
+            } else {
+                // Students see static 1 (themselves) to save reads
+                setOnlineCount(1);
+            }
+
             return () => { clearInterval(heartbeat); unsub(); };
         }, [user]);
 
@@ -397,12 +419,26 @@
                     if (userDoc.exists()) {
                         if (userDoc.data().password === pass) {
                              await window.FB.updateDoc(userRef, { lastSeen: window.FB.serverTimestamp() });
+                             // Log entry
+                             await window.FB.addDoc(window.FB.collection(window.FB.db, "member_logs"), {
+                                name: id,
+                                date: new Date().toLocaleDateString(),
+                                time: new Date().toLocaleTimeString(),
+                                timestamp: window.FB.serverTimestamp()
+                             });
                              onLogin({ name: id, ...userDoc.data(), role: 'student' });
                         } else setErr(T.wrongPass);
                     } else {
                         if (!pass || pass !== confirm) { setErr("Password Mismatch"); setLoading(false); return; }
                         const newUser = { password: pass, role: 'student', createdAt: new Date(), lastSeen: window.FB.serverTimestamp() };
                         await window.FB.setDoc(userRef, newUser);
+                        // Log entry for new user
+                        await window.FB.addDoc(window.FB.collection(window.FB.db, "member_logs"), {
+                            name: id,
+                            date: new Date().toLocaleDateString(),
+                            time: new Date().toLocaleTimeString(),
+                            timestamp: window.FB.serverTimestamp()
+                         });
                         onLogin({ name: id, ...newUser });
                     }
                 }
@@ -472,9 +508,10 @@
         const [userPasswords, setUserPasswords] = useState({});
         useEffect(() => {
             let unsubLogs = () => {};
-            const q = window.FB.query(window.FB.collection(window.FB.db, "member_logs"));
+            // Limit logs to last 50 to prevent massive reads
+            const q = window.FB.query(window.FB.collection(window.FB.db, "member_logs"), window.FB.orderBy('timestamp', 'desc'), window.FB.limit(50));
             unsubLogs = window.FB.onSnapshot(q, (snap) => {
-                setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => b.timestamp - a.timestamp));
+                setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
             });
             const fetchUsers = async () => {
                 const uSnap = await window.FB.getDocs(window.FB.collection(window.FB.db, "users"));
@@ -525,7 +562,7 @@
                     let correct = lines.slice(1).findIndex(l => l.includes('✅'));
                     return { text: qText, options: opts, correct: correct === -1 ? 0 : correct };
                 });
-                await window.FB.addDoc(window.FB.collection(window.FB.db, "exams"), { subject: sub, author: user.name, questions: qs, timestamp: new Date() });
+                await window.FB.addDoc(window.FB.collection(window.FB.db, "exams"), { subject: sub, author: user.name, questions: qs, timestamp: window.FB.serverTimestamp() });
                 setView('dashboard');
             } catch (e) { alert("Error."); }
             setLoading(false);
@@ -551,12 +588,13 @@
         useEffect(() => {
             const q = window.FB.query(window.FB.collection(window.FB.db, "exams"));
             const unsub = window.FB.onSnapshot(q, (snap) => {
-                setExams(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => b.timestamp - a.timestamp));
+                setExams(snap.docs.map(d => ({ id: d.id, ...d.data() })));
             });
             return () => unsub();
         }, []);
         const deleteExam = async (e, examId) => {
             e.stopPropagation();
+            if (!confirm(T.delConfirm)) return;
             await window.FB.deleteDoc(window.FB.doc(window.FB.db, "exams", examId));
         };
         if (active) return <TakeExam T={T} user={user} exam={active} exit={() => setActive(null)} />;
@@ -594,6 +632,7 @@
         const current = exam.questions[idx];
 
         useEffect(() => {
+            if (done) return;
             setTimer(60);
             const t = setInterval(() => {
                 setTimer(p => {
@@ -603,129 +642,118 @@
             }, 1000);
             if (ans !== null) clearInterval(t);
             return () => clearInterval(t);
-        }, [idx, ans]);
+        }, [idx, ans, done]);
 
         const handle = (i) => { if (ans !== null) return; setAns(i); setAttempts(a => a + 1); if (i === current.correct) setScore(s => s + 1); };
+        
         const next = async () => {
-            if (idx + 1 < exam.questions.length) { setIdx(idx + 1); setAns(null); }
-            else { 
-                const totalTimes = (Date.now() - start) / 1000;
-                await window.FB.addDoc(window.FB.collection(window.FB.db, "classroom"), { 
-                    subject: exam.subject, 
-                    student: user.name, 
-                    score, 
-                    total: exam.questions.length, 
-                    totalTimes, 
-                    attempts, 
-                    timestamps: window.FB.serverTimestamp(), 
-                    name: user.name,
-                    examId: exam.id 
-                });
+            if (idx + 1 < exam.questions.length) { 
+                setIdx(idx + 1); 
+                setAns(null); 
+            } else {
                 setDone(true);
+                // Save Result
+                if (user.role === 'student') {
+                    await window.FB.addDoc(window.FB.collection(window.FB.db, "exam_results"), {
+                        student: user.name,
+                        examId: exam.id,
+                        subject: exam.subject,
+                        score: score + (ans === current.correct ? 1 : 0),
+                        total: exam.questions.length,
+                        timestamp: window.FB.serverTimestamp()
+                    });
+                }
             }
         };
 
-        if (done) return <div className="card-glow p-12 text-center rounded-[3rem] animate-fade"><h2 className="text-yellow-500 text-3xl font-bold mb-8">{T.examDone}</h2><div className="text-6xl font-black mb-10" style={{color: 'var(--text-main)'}}>{score} / {exam.questions.length}</div><button onClick={exit} className="bg-blue-800 text-white px-12 py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all">{T.back}</button></div>;
-        
-        return (
-            <div className="animate-fade w-full max-w-2xl mx-auto py-6">
-                <div className="flex justify-between text-blue-400 font-bold mb-4 px-2"><span>{exam.subject}</span><span>{idx + 1} / {exam.questions.length}</span></div>
-                <div className="w-full bg-slate-800 h-1.5 mb-2 rounded-full overflow-hidden">
-                    <div className="timer-bar" style={{width: `${(timer / 60) * 100}%`, background: timer < 10 ? '#ef4444' : '#10b981'}}></div>
+        if (done) return (
+            <div className="card-glow rounded-3xl p-10 animate-fade text-center w-full max-w-xl mx-auto">
+                <span className="text-6xl mb-4 block">🎉</span>
+                <h2 className="text-3xl font-bold mb-4" style={{color: 'var(--text-main)'}}>{T.examDone}</h2>
+                <div className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-6">
+                    {score + (ans === current.correct ? 1 : 0)} / {exam.questions.length}
                 </div>
-                <div className="card-glow rounded-[2rem] p-8 space-y-6">
-                    <h3 className="text-2xl font-bold leading-relaxed" style={{color: 'var(--text-main)'}}>{current.text}</h3>
-                    <div className="grid gap-3">
+                <button onClick={exit} className="bg-slate-700 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-600 transition-all">{T.back}</button>
+            </div>
+        );
+
+        return (
+            <div className="w-full max-w-3xl mx-auto animate-fade">
+                <div className="card-glow rounded-3xl p-8 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-1000" style={{width: `${((idx+1)/exam.questions.length)*100}%`}}></div>
+                    <div className="flex justify-between items-center mb-8">
+                        <span className="font-bold text-xl text-blue-400">{T.subject}: {exam.subject}</span>
+                        <div className="flex items-center gap-2">
+                            <span className="font-mono text-2xl font-bold" style={{color: timer < 10 ? 'var(--spider-red)' : 'var(--text-main)'}}>{timer}s</span>
+                            <span className="text-2xl">⏱️</span>
+                        </div>
+                    </div>
+                    
+                    <h3 className="text-2xl font-bold mb-8 leading-relaxed text-right" style={{color: 'var(--text-main)'}}>{current.text}</h3>
+
+                    <div className="grid gap-4">
                         {current.options.map((opt, i) => (
-                            <button key={i} onClick={() => handle(i)} className={`w-full p-5 rounded-2xl text-right font-bold transition-all border ${ans === null ? 'hover:bg-white/5 border-slate-700' : (i === current.correct ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : (ans === i ? 'bg-red-500/20 border-red-500 text-red-400' : 'opacity-40 border-slate-800'))}`}>{opt}</button>
+                            <button key={i} onClick={() => handle(i)} 
+                                className={`p-6 rounded-2xl text-right font-bold text-lg transition-all border
+                                    ${ans === null ? 'bg-slate-800/50 border-slate-700 hover:border-blue-500 hover:bg-blue-900/20' : 
+                                      i === current.correct ? 'bg-emerald-900/40 border-emerald-500 text-emerald-400' : 
+                                      i === ans ? 'bg-red-900/40 border-red-500 text-red-400' : 'opacity-50 border-transparent'}
+                                `}>
+                                {opt}
+                            </button>
                         ))}
                     </div>
-                    {ans !== null && <button onClick={next} className="w-full bg-blue-700 text-white py-4 rounded-xl font-bold animate-fade">{T.nextQ}</button>}
+
+                    {ans !== null && (
+                        <div className="mt-8 flex justify-end">
+                             <button onClick={next} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-500 transition-all animate-fade">{idx + 1 === exam.questions.length ? T.finishExam : T.nextQ} →</button>
+                        </div>
+                    )}
                 </div>
             </div>
         );
     };
 
     const Leaderboard = ({ T, setView, user }) => {
-        const [data, setData] = useState([]);
-        const [exams, setExams] = useState([]);
-        const [activeSubject, setActiveSubject] = useState('');
-
+        const [ranks, setRanks] = useState([]);
+        
         useEffect(() => {
-            const qExams = window.FB.query(window.FB.collection(window.FB.db, "exams"));
-            const unsubExams = window.FB.onSnapshot(qExams, (snap) => {
-                const currentExams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                setExams(currentExams);
-                if (currentExams.length > 0 && !activeSubject) setActiveSubject(currentExams[0].subject);
+            // Smart Query: Order by score to get top students immediately
+            const q = window.FB.query(window.FB.collection(window.FB.db, "exam_results"), window.FB.orderBy('score', 'desc'), window.FB.limit(20));
+            const unsub = window.FB.onSnapshot(q, (snap) => {
+                const data = snap.docs.map(d => d.data());
+                // Aggregate scores if needed, for now just showing top exam results
+                setRanks(data);
             });
-            const qScores = window.FB.query(window.FB.collection(window.FB.db, "classroom"));
-            const unsubScores = window.FB.onSnapshot(qScores, (snap) => {
-                setData(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-            });
-            return () => { unsubExams(); unsubScores(); };
-        }, [activeSubject]);
-
-        const filteredData = data
-            .filter(item => exams.some(e => e.subject === item.subject) && item.subject === activeSubject)
-            .sort((a,b) => {
-                const ratioA = a.score / a.total;
-                const ratioB = b.score / b.total;
-                if (ratioB !== ratioA) return ratioB - ratioA; 
-                if (a.attempts !== b.attempts) return a.attempts - b.attempts; 
-                return a.totalTimes - b.totalTimes; 
-            });
+            return () => unsub();
+        }, []);
 
         return (
-            <div className="card-glow rounded-3xl p-8 animate-fade w-full">
+            <div className="card-glow rounded-3xl p-8 animate-fade w-full max-w-3xl mx-auto">
                 <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
                     <h2 className="text-xl font-bold" style={{color: 'var(--text-main)'}}>{T.menuLeader}</h2>
-                    <button onClick={() => setView('dashboard')} className="font-bold" style={{color: 'var(--text-muted)'}}>{T.back}</button>
+                    <button onClick={() => setView('dashboard')} className="font-bold hover:text-slate-300 transition-colors" style={{color: 'var(--text-muted)'}}>{T.back}</button>
                 </div>
-
-                <div className="flex flex-wrap gap-2 mb-8">
-                    {exams.map(ex => (
-                        <button key={ex.id} onClick={() => setActiveSubject(ex.subject)}
-                            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${activeSubject === ex.subject ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-900/20' : 'bg-slate-900/50 text-slate-400 border-slate-800 hover:border-slate-600'}`}>
-                            {ex.subject}
-                        </button>
+                
+                <div className="space-y-4">
+                    <div className="flex justify-between px-6 text-sm font-bold" style={{color: 'var(--text-muted)'}}>
+                        <span>{T.student}</span>
+                        <span>{T.score}</span>
+                    </div>
+                    {ranks.map((r, i) => (
+                        <div key={i} className={`flex justify-between items-center p-4 rounded-xl ${i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'bg-slate-800/30'}`}>
+                            <div className="flex items-center gap-4">
+                                <span className="font-mono font-bold w-8">{i+1}</span>
+                                <div className="flex flex-col">
+                                    <span className="font-bold">{r.student}</span>
+                                    <span className="text-xs opacity-70">{r.subject}</span>
+                                </div>
+                            </div>
+                            <span className="font-mono font-bold text-xl">{r.score}</span>
+                        </div>
                     ))}
+                    {ranks.length === 0 && <p className="text-center py-8 opacity-50">No records yet...</p>}
                 </div>
-
-                <div className="overflow-x-auto">
-                    <table className="w-full text-right border-separate border-spacing-y-3">
-                        <thead>
-                            <tr className="text-xs uppercase tracking-wider" style={{color: 'var(--text-muted)'}}>
-                                <th className="px-4 py-2">الترتيب</th>
-                                <th className="px-4 py-2">الاسم</th>
-                                <th className="px-4 py-2">{T.score}</th>
-                                <th className="px-4 py-2">{T.attempts}</th>
-                                <th className="px-4 py-2">{T.totalTimeText} (ث)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredData.map((item, i) => {
-                                let rowClass = "bg-slate-900/40 border-slate-800"; // 11+
-                                if (i < 3) rowClass = "rank-gold"; // 1-3
-                                else if (i < 10) rowClass = "rank-silver"; // 4-10
-
-                                return (
-                                    <tr key={item.id} className={`${rowClass} rounded-2xl transition-all border`}>
-                                        <td className="px-4 py-4 first:rounded-r-2xl">
-                                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${i === 0 ? 'bg-black/20' : 'bg-slate-800'} font-black text-white`}>
-                                                {i + 1}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-4 font-bold">{item.student}</td>
-                                        <td className="px-4 py-4 font-black text-lg">{item.score}/{item.total}</td>
-                                        <td className="px-4 py-4 font-bold">{item.attempts || 0}</td>
-                                        <td className="px-4 py-4 last:rounded-l-2xl font-mono">{Math.round(item.totalTimes)}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-                {exams.length === 0 ? <p className="text-center py-10 opacity-40">لا توجد اختبارات متاحة</p> : filteredData.length === 0 && <p className="text-center py-10 opacity-40">لا توجد نتائج لهذه المادة</p>}
             </div>
         );
     };
