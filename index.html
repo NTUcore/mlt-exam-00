@@ -1,1 +1,686 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام القمة الرسمي</title>
 
+    <!-- Scripts -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, getDocs, where, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHbPz_njjhJ5tRR45G5omH0mXztdb98PU",
+            authDomain: "mcq0-91a9b.firebaseapp.com",
+            projectId: "mcq0-91a9b",
+            storageBucket: "mcq0-91a9b.firebasestorage.app",
+            messagingSenderId: "695291767679",
+            appId: "1:695291767679:web:11a81c676271ff6e9c884a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        window.FB = { db, auth, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, getDocs, where, signInAnonymously, onAuthStateChanged, serverTimestamp, orderBy };
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&family=Cairo:wght@400;600;700&display=swap');
+        
+        :root {
+            --bg-main: radial-gradient(circle at top right, #1e293b 0%, #020617 60%);
+            --card-bg: rgba(10, 15, 29, 0.8);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --input-bg: rgba(15, 23, 42, 0.9);
+            --input-border: #334155;
+            --navy-dark: #0a0f1d;
+            --navy-deep: #020617;
+            --spider-red: #991b1b;
+            --glow-red: rgba(153, 27, 27, 0.4);
+            --header-bg: rgba(15, 23, 42, 0.6);
+        }
+
+        [data-theme='light'] {
+            --bg-main: radial-gradient(circle at top right, #f8fafc 0%, #e2e8f0 60%);
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --input-bg: #ffffff;
+            --input-border: #cbd5e1;
+            --navy-dark: #f1f5f9;
+            --navy-deep: #e2e8f0;
+            --spider-red: #dc2626;
+            --glow-red: rgba(220, 38, 38, 0.2);
+            --header-bg: rgba(255, 255, 255, 0.8);
+        }
+
+        body { 
+            font-family: 'Noto Sans Arabic', 'Cairo', sans-serif; 
+            background: var(--bg-main); 
+            color: var(--text-main); 
+            margin: 0; 
+            overflow-x: hidden;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .input-formal { 
+            background: var(--input-bg); 
+            border: 1px solid var(--input-border); 
+            color: var(--text-main); 
+            transition: all 0.3s ease; 
+        }
+
+        .input-formal:focus { 
+            border-color: var(--spider-red); 
+            box-shadow: 0 0 15px var(--glow-red); 
+            outline: none;
+        }
+
+        .card-glow {
+            background: var(--card-bg);
+            border: 1px solid rgba(153, 27, 27, 0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .animate-fade { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .rank-1 { background: linear-gradient(135deg, #fbbf24, #d97706); color: #000; font-weight: 800; box-shadow: 0 0 20px rgba(251, 191, 36, 0.3); }
+        
+        .btn-action { transition: all 0.2s ease; position: relative; overflow: hidden; }
+        .btn-action:active { transform: scale(0.96); }
+
+        .timer-bar {
+            height: 4px;
+            background: #10b981;
+            transition: width 1s linear;
+        }
+
+        .sun-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--input-border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .sun-toggle:hover {
+            border-color: #fbbf24;
+            transform: rotate(20deg);
+        }
+    </style>
+</head>
+<body class="premium-bg">
+
+<div id="root"></div>
+
+<script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const _AK = "c29uIG9mIGFiZA=="; 
+    const _PK = "QVJBU1NfMjMxMDIz";    
+
+    const TRANSLATIONS = {
+        AR: {
+            basmalah: "بِسْمِ اللهِ وَالْحَمْدُ للهِ الَّذِي خَلَقَنَا وَنَرْجِعُ إِلَيْهِ",
+            gate: "بوابة الدخول", enterInfo: "يرجى اختيار اسمك للوصول إلى النظام",
+            labelSeat: "رقم المقعد",
+            btnContinue: "متابعة", passLabel: "رمز الدخول",
+            createPass: "إنشاء رمز سري للمقعد",
+            menuMembers: "سجل الأعضاء", menuCreate: "إنشاء الاختبارات",
+            menuHall: "قاعة الامتحانات", menuLeader: "لوحة المتصدرين",
+            subject: "عنوان المادة", publish: "نشر الاختبار", back: "رجوع",
+            examDone: "اكتمل الاختبار بنجاح", nextQ: "السؤال التالي",
+            logout: "خروج",
+            seatTaken: "هذا المقعد محجوز، أدخل الرمز للدخول",
+            seatFree: "المقعد متاح! يرجى تعيين رمز خاص بك",
+            wrongPass: "الرمز غير صحيح! الدخول رفض",
+            finishExam: "إنهاء الاختبار",
+            totalTimeText: "إجمالي الوقت",
+            attempts: "المحاولات",
+            startBtn: "بدء الاختبار",
+            passHeader: "كلمة المرور",
+            delConfirm: "هل أنت متأكد من رغبتك في الحذف؟ سيتم إخفاء نتائج الطلاب لهذه المادة.",
+            deleteBtn: "حذف",
+            score: "النتيجة",
+            noExams: "لا توجد اختبارات متاحة",
+            noResults: "لا توجد نتائج لهذه المادة"
+        },
+        KU: {
+            basmalah: "بەناوی خودایەک کە ئێمەی دروستکردووە و بۆ لای ئەویش دەگەڕێینەوە",
+            gate: "دەروازەی چوونەژوورەوە", enterInfo: "تکایە ناوی خۆت هەڵبژێرە بۆ گەیشتن بە سیستم",
+            labelSeat: "ژمارەی کورسی",
+            btnContinue: "بەردەوام بە", passLabel: "کۆدی چوونەژوورەوە",
+            createPass: "دروستکردنی کۆد بۆ ئەم کورسییە",
+            menuMembers: "تۆماری ئەندامان", menuCreate: "دروستکردنی تاقیکردنەوە",
+            menuHall: "هۆڵی تاقیکردنەوە", menuLeader: "ڕیزبەندی پێشەنگەکان",
+            subject: "ناونیشانی بابەت", publish: "بڵاوکردنەوە", back: "گەڕانەوە",
+            examDone: "تاقیکردنەوە بە سەرکەوتوویی کۆتایی هات", nextQ: "پرسیاری داهاتوو",
+            logout: "چوونە دەرەوە",
+            seatTaken: "ئەم کورسییە گیراوە، کۆدەکەت بنووسە",
+            seatFree: "ئەم کورسيیە بەردەستە! کۆدێکی بۆ دابنێ",
+            wrongPass: "کۆدەکە هەڵەیە! چوونەژوورەوە ڕەتکرایەوە",
+            finishExam: "کۆتایی تاقیکردنەوە",
+            totalTimeText: "کۆی کات",
+            attempts: "هەوڵەکان",
+            startBtn: "دەستپێکردن",
+            passHeader: "وشەی نهێنی",
+            delConfirm: "ئایا دڵنیای لە سڕینەوە؟",
+            deleteBtn: "سڕینەوە",
+            score: "نمرە",
+            noExams: "تاقیکردنەوە بەردەست نییە",
+            noResults: "هیچ ئەنجامێک بۆ ئەم بابەتە نییە"
+        },
+        TR: {
+            basmalah: "Bizi yaratan ve dönüşümüz O'na olan Allah'ın adıyla",
+            gate: "Giriş Portalı", enterInfo: "Sisteme erişmek için lütfen isminizi seçin",
+            labelSeat: "Koltuk No",
+            btnContinue: "Devam Et", passLabel: "Giriş Kodu",
+            createPass: "Bu koltuk için şifre oluştur",
+            menuMembers: "Üye Kayıtları", menuCreate: "Sınav Oluştur",
+            menuHall: "Sınav Salonu", menuLeader: "Liderlik Tablosu",
+            subject: "Ders Başlığı", publish: "Sınavı Yayınla", back: "Geri",
+            examDone: "Sınav başarıyla tamamlandı", nextQ: "Sonraki Soru",
+            logout: "Çıkış",
+            seatTaken: "Bu koltuk ayrılmış, kodunuzu girin",
+            seatFree: "Koltuk müsait! Lütfen şifrenizi belirleyin",
+            wrongPass: "Hatalı kod! Erişim reddedildi",
+            finishExam: "Sınavı Bitir",
+            totalTimeText: "Toplam Süre",
+            attempts: "Denemeler",
+            startBtn: "Sınavı Başlat",
+            passHeader: "Şifre",
+            delConfirm: "Silmek istediğinizden emin misiniz?",
+            deleteBtn: "Sil",
+            score: "Puan",
+            noExams: "Mevcut sınav yok",
+            noResults: "Bu ders için sonuç bulunamadı"
+        },
+        EN: {
+            basmalah: "In the name of Allah who created us and to Whom we shall return",
+            gate: "Entry Portal", enterInfo: "Please select your name to access the system",
+            labelSeat: "Seat Number",
+            btnContinue: "Continue", passLabel: "Access Code",
+            createPass: "Set a password for this seat",
+            menuMembers: "Members Log", menuCreate: "Create Exam",
+            menuHall: "Exam Hall", menuLeader: "Leaderboard",
+            subject: "Subject Title", publish: "Publish Exam", back: "Back",
+            examDone: "Exam completed successfully", nextQ: "Next Question",
+            logout: "Logout",
+            seatTaken: "Seat reserved, enter code to log in",
+            seatFree: "Seat available! Please set your code",
+            wrongPass: "Incorrect code! Access denied",
+            finishExam: "Finish Exam",
+            totalTimeText: "Total Time",
+            attempts: "Attempts",
+            startBtn: "Start Exam",
+            passHeader: "Password",
+            delConfirm: "Are you sure you want to delete?",
+            deleteBtn: "Delete",
+            score: "Score",
+            noExams: "No exams available",
+            noResults: "No results for this subject"
+        }
+    };
+
+    const SEAT_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
+    const SEAT_NUMBERS = Array.from({length: 39}, (_, i) => i + 1);
+
+    const App = () => {
+        const [lang, setLang] = useState('AR');
+        const [user, setUser] = useState(null);
+        const [view, setView] = useState('login');
+        const [theme, setTheme] = useState('dark');
+
+        const T = TRANSLATIONS[lang];
+
+        useEffect(() => {
+            document.body.setAttribute('data-theme', theme);
+        }, [theme]);
+
+        const handleLogin = (userData) => { 
+            setUser(userData); 
+            setView('dashboard'); 
+            // تسجيل الدخول في السجل
+            if(userData.role === 'student') {
+                const now = new Date();
+                window.FB.addDoc(window.FB.collection(window.FB.db, "member_logs"), {
+                    name: userData.name,
+                    date: now.toLocaleDateString('en-GB'),
+                    time: now.toLocaleTimeString('en-GB'),
+                    timestamp: window.FB.serverTimestamp()
+                });
+            }
+        };
+
+        const handleLogout = () => { setUser(null); setView('login'); };
+
+        return (
+            <div className="min-h-screen p-4 flex flex-col items-center justify-center relative">
+                
+                {view === 'login' && (
+                    <div className="absolute top-4 right-4 z-50">
+                        <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="sun-toggle">
+                            {theme === 'dark' ? '☀️' : '🌙'}
+                        </button>
+                    </div>
+                )}
+
+                {view === 'login' && <Login T={T} lang={lang} setLang={setLang} onLogin={handleLogin} />}
+                {view !== 'login' && user && (
+                    <div className="w-full max-w-4xl space-y-8 animate-fade">
+                        <header className="flex justify-between items-center p-6 rounded-2xl border-b border-blue-900/50 backdrop-blur-md" style={{background: 'var(--header-bg)'}}>
+                            <div className="flex items-center gap-4">
+                                <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="sun-toggle">
+                                    {theme === 'dark' ? '☀️' : '🌙'}
+                                </button>
+                                <h2 className="font-bold font-mono text-lg" style={{color: 'var(--text-main)'}}>{user.name}</h2>
+                            </div>
+                            
+                            <button onClick={handleLogout} className="text-red-500 font-bold border border-red-900/50 px-6 py-2 rounded-xl text-sm hover:bg-red-950/30 transition-colors">
+                                {T.logout}
+                            </button>
+                        </header>
+
+                        {view === 'dashboard' && <Dashboard T={T} user={user} setView={setView} />}
+                        {view === 'members' && <MembersLog T={T} setView={setView} />}
+                        {view === 'create' && <CreateExam T={T} user={user} setView={setView} />}
+                        {view === 'hall' && <ExamHall T={T} user={user} setView={setView} />}
+                        {view === 'leaderboard' && <Leaderboard T={T} setView={setView} user={user} />}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const Login = ({ T, lang, setLang, onLogin }) => {
+        const [step, setStep] = useState(1);
+        const [seat, setSeat] = useState({ L: 'A', N: '1' });
+        const [pass, setPass] = useState('');
+        const [confirm, setConfirm] = useState('');
+        const [err, setErr] = useState('');
+        const [adminMode, setAdminMode] = useState(false);
+        const [adminName, setAdminName] = useState('');
+        const [taken, setTaken] = useState(false);
+        const [loading, setLoading] = useState(false);
+
+        const check = async () => {
+            setErr(''); setLoading(true);
+            try {
+                if (adminMode) {
+                    if (adminName.trim().toLowerCase() === atob(_AK)) setStep(2);
+                    else setErr("Admin Not Found");
+                } else {
+                    const id = `${seat.L}${seat.N}`;
+                    const userDoc = await window.FB.getDoc(window.FB.doc(window.FB.db, "users", id));
+                    setTaken(userDoc.exists());
+                    setErr(userDoc.exists() ? T.seatTaken : T.seatFree);
+                    setStep(2);
+                }
+            } catch (e) { setErr("Network Error"); }
+            setLoading(false);
+        };
+
+        const submit = async () => {
+            setLoading(true);
+            try {
+                if (adminMode) {
+                    if (pass === atob(_PK)) onLogin({ name: adminName, role: 'admin' });
+                    else setErr("Wrong Admin Password");
+                } else {
+                    const id = `${seat.L}${seat.N}`;
+                    const userRef = window.FB.doc(window.FB.db, "users", id);
+                    const userDoc = await window.FB.getDoc(userRef);
+                    if (userDoc.exists()) {
+                        if (userDoc.data().password === pass) {
+                             onLogin({ name: id, ...userDoc.data(), role: 'student' });
+                        } else setErr(T.wrongPass);
+                    } else {
+                        if (!pass || pass !== confirm) { setErr("Password Mismatch"); setLoading(false); return; }
+                        const newUser = { password: pass, role: 'student', createdAt: new Date() };
+                        await window.FB.setDoc(userRef, newUser);
+                        onLogin({ name: id, ...newUser });
+                    }
+                }
+            } catch (e) { setErr("Database Error"); }
+            setLoading(false);
+        };
+
+        return (
+            <div className="animate-fade w-full max-w-xl mx-auto">
+                <div className="flex justify-center gap-2 mb-6">
+                    {['AR', 'KU', 'TR', 'EN'].map(l => (
+                        <button key={l} onClick={() => setLang(l)} className={`px-4 py-2 rounded-xl font-bold text-xs border transition-all ${lang === l ? 'bg-red-800 text-white border-red-600' : 'bg-slate-900 text-gray-500 border-slate-700 hover:border-slate-500'}`}>{l}</button>
+                    ))}
+                </div>
+                <div className="card-glow rounded-[2rem] p-10 text-center">
+                    <p className="text-[#fbbf24] text-xl font-bold mb-6">{T.basmalah}</p>
+                    <h2 className="font-bold mb-2 text-2xl" style={{color: 'var(--text-main)'}}>{T.gate}</h2>
+                    <p className="text-sm mb-8" style={{color: 'var(--text-muted)'}}>{T.enterInfo}</p>
+                    {step === 1 ? (
+                        <div className="space-y-6">
+                            {adminMode ? 
+                                <input type="text" value={adminName} onChange={e => setAdminName(e.target.value)} className="w-full p-4 rounded-xl input-formal text-center" placeholder="Admin Name" /> :
+                                <div className="flex gap-2">
+                                    <select value={seat.L} onChange={e => setSeat({...seat, L: e.target.value})} className="w-1/2 p-4 rounded-xl input-formal text-xl font-bold">{SEAT_LETTERS.map(l => <option key={l}>{l}</option>)}</select>
+                                    <select value={seat.N} onChange={e => setSeat({...seat, N: e.target.value})} className="w-1/2 p-4 rounded-xl input-formal text-xl font-bold">{SEAT_NUMBERS.map(n => <option key={n}>{n}</option>)}</select>
+                                </div>
+                            }
+                            <button onClick={check} disabled={loading} className="w-full bg-red-800 text-white p-4 rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50">{loading ? '...' : T.btnContinue}</button>
+                            <button onClick={() => setAdminMode(!adminMode)} className="text-2xl opacity-20 hover:opacity-100 transition-opacity">🗝️</button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <p className="text-blue-400 font-mono font-bold text-lg mb-2">{adminMode ? adminName : `${seat.L}${seat.N}`}</p>
+                            <input type="password" value={pass} onChange={e => setPass(e.target.value)} placeholder={T.passLabel} className="w-full p-4 rounded-xl input-formal text-center" />
+                            {!taken && !adminMode && <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Confirm Password" className="w-full p-4 rounded-xl input-formal text-center" />}
+                            {err && <p className={`text-sm font-bold ${err.includes('متاح') || err.includes('available') || err.includes('müsait') ? 'text-emerald-500' : 'text-red-500'}`}>{err}</p>}
+                            <button onClick={submit} disabled={loading} className="w-full bg-blue-800 text-white p-4 rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">{loading ? '...' : T.btnContinue}</button>
+                            <button onClick={() => {setStep(1); setErr('');}} className="text-xs text-slate-500 underline hover:text-slate-300">{T.back}</button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const Dashboard = ({ T, user, setView }) => {
+        const items = [
+            { id: 'create', label: T.menuCreate, icon: '📝', color: 'bg-red-950/40 border-red-900 hover:border-red-600', show: user.role === 'admin' },
+            { id: 'hall', label: T.menuHall, icon: '🏛️', color: 'bg-blue-950/40 border-blue-900 hover:border-blue-600', show: true },
+            { id: 'leaderboard', label: T.menuLeader, icon: '🏆', color: 'bg-emerald-950/40 border-emerald-900 hover:border-emerald-600', show: true },
+            { id: 'members', label: T.menuMembers, icon: '👥', color: 'bg-slate-900 border-slate-700 hover:border-slate-500', show: user.role === 'admin' }
+        ];
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 animate-fade">
+                {items.filter(i => i.show).map(item => (
+                    <button key={item.id} onClick={() => setView(item.id)} className={`p-8 rounded-3xl border flex flex-col items-center gap-4 btn-action ${item.color} backdrop-blur-sm`}>
+                        <span className="text-6xl">{item.icon}</span>
+                        <span className="font-bold text-lg" style={{color: 'var(--text-main)'}}>{item.label}</span>
+                    </button>
+                ))}
+            </div>
+        );
+    };
+
+    const MembersLog = ({ T, setView }) => {
+        const [logs, setLogs] = useState([]);
+        const [userPasswords, setUserPasswords] = useState({});
+        useEffect(() => {
+            let unsubLogs = () => {};
+            const q = window.FB.query(window.FB.collection(window.FB.db, "member_logs"), window.FB.orderBy("timestamp", "desc"));
+            unsubLogs = window.FB.onSnapshot(q, (snap) => {
+                setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            });
+            const fetchUsers = async () => {
+                const uSnap = await window.FB.getDocs(window.FB.collection(window.FB.db, "users"));
+                const passMap = {};
+                uSnap.forEach(doc => { passMap[doc.id] = doc.data().password; });
+                setUserPasswords(passMap);
+            };
+            fetchUsers();
+            return () => unsubLogs();
+        }, []);
+        return (
+            <div className="card-glow rounded-3xl p-8 animate-fade w-full">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
+                    <h2 className="text-xl font-bold" style={{color: 'var(--text-main)'}}>{T.menuMembers}</h2>
+                    <button onClick={() => setView('dashboard')} className="font-bold hover:text-slate-300 transition-colors" style={{color: 'var(--text-muted)'}}>{T.back}</button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-right">
+                        <thead><tr className="text-sm font-bold" style={{color: 'var(--text-muted)'}}><th className="p-4">الرمز</th><th className="p-4">{T.passHeader}</th><th className="p-4">التاريخ</th><th className="p-4">الوقت</th></tr></thead>
+                        <tbody style={{color: 'var(--text-main)'}}>
+                            {logs.map(log => (
+                                <tr key={log.id} className="border-b border-slate-800/40 hover:bg-white/5 transition-colors">
+                                    <td className="p-4 font-mono font-bold">{log.name}</td>
+                                    <td className="p-4 text-blue-400 font-bold">{userPasswords[log.name] || '----'}</td>
+                                    <td className="p-4">{log.date}</td>
+                                    <td className="p-4 text-emerald-500 font-bold">{log.time}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    };
+
+    const CreateExam = ({ T, user, setView }) => {
+        const [sub, setSub] = useState('');
+        const [raw, setRaw] = useState('');
+        const [loading, setLoading] = useState(false);
+        const publish = async () => {
+            if (!sub || !raw) return;
+            setLoading(true);
+            try {
+                const qs = raw.split(/q:/i).filter(b => b.trim()).map(b => {
+                    const lines = b.trim().split('\n');
+                    let qText = lines[0];
+                    let opts = lines.slice(1).map(l => l.replace('✅', '').trim());
+                    let correct = lines.slice(1).findIndex(l => l.includes('✅'));
+                    return { text: qText, options: opts, correct: correct === -1 ? 0 : correct };
+                });
+                await window.FB.addDoc(window.FB.collection(window.FB.db, "exams"), { subject: sub, author: user.name, questions: qs, timestamp: new Date() });
+                setView('dashboard');
+            } catch (e) { alert("Error."); }
+            setLoading(false);
+        };
+        return (
+            <div className="card-glow rounded-3xl p-8 animate-fade w-full max-w-2xl mx-auto">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
+                    <h2 className="text-xl font-bold" style={{color: 'var(--text-main)'}}>{T.menuCreate}</h2>
+                    <button onClick={() => setView('dashboard')} className="font-bold" style={{color: 'var(--text-muted)'}}>{T.back}</button>
+                </div>
+                <div className="space-y-4">
+                    <input value={sub} onChange={e => setSub(e.target.value)} className="w-full p-4 rounded-xl input-formal" placeholder={T.subject} />
+                    <textarea value={raw} onChange={e => setRaw(e.target.value)} className="w-full h-64 p-4 rounded-xl input-formal font-mono" placeholder="q: Question?&#10;Option 1 ✅&#10;Option 2"></textarea>
+                    <button onClick={publish} disabled={loading} className="w-full bg-red-800 text-white p-4 rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50">{loading ? '...' : T.publish}</button>
+                </div>
+            </div>
+        );
+    };
+
+    const ExamHall = ({ T, user, setView }) => {
+        const [active, setActive] = useState(null);
+        const [exams, setExams] = useState([]);
+        useEffect(() => {
+            const q = window.FB.query(window.FB.collection(window.FB.db, "exams"), window.FB.orderBy("timestamp", "desc"));
+            const unsub = window.FB.onSnapshot(q, (snap) => {
+                setExams(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            });
+            return () => unsub();
+        }, []);
+        const deleteExam = async (e, examId) => {
+            e.stopPropagation();
+            if (!confirm(T.delConfirm)) return;
+            await window.FB.deleteDoc(window.FB.doc(window.FB.db, "exams", examId));
+        };
+        if (active) return <TakeExam T={T} user={user} exam={active} exit={() => setActive(null)} />;
+        return (
+            <div className="card-glow rounded-3xl p-8 animate-fade w-full">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
+                    <h2 className="text-xl font-bold" style={{color: 'var(--text-main)'}}>{T.menuHall}</h2>
+                    <button onClick={() => setView('dashboard')} className="font-bold" style={{color: 'var(--text-muted)'}}>{T.back}</button>
+                </div>
+                {exams.length === 0 ? <p className="text-center py-10 opacity-40">{T.noExams}</p> : (
+                    <div className="grid gap-4">
+                        {exams.map(e => (
+                            <div key={e.id} className="p-6 rounded-2xl border-r-4 border-blue-600 flex justify-between items-center relative group backdrop-blur-sm" style={{background: 'var(--input-bg)'}}>
+                                <span className="font-bold text-lg" style={{color: 'var(--text-main)'}}>{e.subject}</span>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setActive(e)} className="bg-blue-800 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all">{T.startBtn}</button>
+                                    {(user.role === 'admin' || user.name === e.author) && (
+                                        <button onClick={(ev) => deleteExam(ev, e.id)} className="bg-red-900/30 hover:bg-red-600 text-red-200 px-4 py-2 rounded-xl text-xs font-bold border border-red-900/50 transition-all">{T.deleteBtn}</button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const TakeExam = ({ T, user, exam, exit }) => {
+        const [idx, setIdx] = useState(0);
+        const [score, setScore] = useState(0);
+        const [done, setDone] = useState(false);
+        const [ans, setAns] = useState(null);
+        const [timer, setTimer] = useState(60);
+        const [start] = useState(Date.now());
+        const [attempts, setAttempts] = useState(0);
+        const current = exam.questions[idx];
+
+        useEffect(() => {
+            setTimer(60);
+            const t = setInterval(() => {
+                setTimer(p => {
+                    if (p <= 1) { clearInterval(t); if (ans === null) setAns(-1); return 0; }
+                    return p - 1;
+                });
+            }, 1000);
+            if (ans !== null) clearInterval(t);
+            return () => clearInterval(t);
+        }, [idx, ans]);
+
+        const handle = (i) => { if (ans !== null) return; setAns(i); setAttempts(a => a + 1); if (i === current.correct) setScore(s => s + 1); };
+        const next = async () => {
+            if (idx + 1 < exam.questions.length) { setIdx(idx + 1); setAns(null); }
+            else { 
+                const totalTimes = (Date.now() - start) / 1000;
+                await window.FB.addDoc(window.FB.collection(window.FB.db, "classroom"), { 
+                    subject: exam.subject, 
+                    student: user.name, 
+                    score, 
+                    total: exam.questions.length, 
+                    totalTimes, 
+                    attempts, 
+                    timestamp: window.FB.serverTimestamp()
+                });
+                setDone(true);
+            }
+        };
+
+        if (done) return <div className="card-glow p-12 text-center rounded-[3rem] animate-fade"><h2 className="text-yellow-500 text-3xl font-bold mb-8">{T.examDone}</h2><div className="text-6xl font-black mb-10" style={{color: 'var(--text-main)'}}>{score} / {exam.questions.length}</div><button onClick={exit} className="bg-blue-800 text-white px-12 py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all">{T.back}</button></div>;
+        
+        return (
+            <div className="animate-fade w-full max-w-2xl mx-auto py-6">
+                <div className="flex justify-between text-blue-400 font-bold mb-4 px-2"><span>{exam.subject}</span><span>{idx + 1} / {exam.questions.length}</span></div>
+                <div className="w-full bg-slate-800 h-1.5 mb-2 rounded-full overflow-hidden">
+                    <div className="timer-bar" style={{width: `${(timer / 60) * 100}%`, background: timer < 10 ? '#ef4444' : '#10b981'}}></div>
+                </div>
+                <div className="card-glow rounded-[2rem] p-8 space-y-6">
+                    <h3 className="text-2xl font-bold leading-relaxed" style={{color: 'var(--text-main)'}}>{current.text}</h3>
+                    <div className="grid gap-3">
+                        {current.options.map((opt, i) => (
+                            <button key={i} onClick={() => handle(i)} className={`w-full p-5 rounded-2xl text-right font-bold transition-all border ${ans === null ? 'hover:bg-white/5 border-slate-700' : (i === current.correct ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : (ans === i ? 'bg-red-500/20 border-red-500 text-red-400' : 'opacity-40 border-slate-800'))}`}>{opt}</button>
+                        ))}
+                    </div>
+                    {ans !== null && <button onClick={next} className="w-full bg-blue-700 text-white py-4 rounded-xl font-bold animate-fade">{idx + 1 === exam.questions.length ? T.finishExam : T.nextQ}</button>}
+                </div>
+            </div>
+        );
+    };
+
+    const Leaderboard = ({ T, setView, user }) => {
+        const [data, setData] = useState([]);
+        const [exams, setExams] = useState([]);
+        const [activeSubject, setActiveSubject] = useState('');
+
+        useEffect(() => {
+            const qExams = window.FB.query(window.FB.collection(window.FB.db, "exams"), window.FB.orderBy("timestamp", "desc"));
+            const unsubExams = window.FB.onSnapshot(qExams, (snap) => {
+                const currentExams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setExams(currentExams);
+                if (currentExams.length > 0 && !activeSubject) setActiveSubject(currentExams[0].subject);
+            });
+
+            const qScores = window.FB.query(window.FB.collection(window.FB.db, "classroom"), window.FB.orderBy("score", "desc"));
+            const unsubScores = window.FB.onSnapshot(qScores, (snap) => {
+                const rawData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                // فلترة النتائج بحيث يظهر أفضل سكور لكل طالب لنفس المادة
+                const filteredData = [];
+                const seen = new Set();
+                rawData.forEach(item => {
+                    const key = `${item.student}_${item.subject}`;
+                    if(!seen.has(key)) {
+                        filteredData.push(item);
+                        seen.add(key);
+                    }
+                });
+                setData(filteredData);
+            });
+
+            return () => { unsubExams(); unsubScores(); };
+        }, []);
+
+        const filtered = data.filter(d => d.subject === activeSubject).sort((a,b) => b.score - a.score || a.totalTimes - b.totalTimes);
+
+        return (
+            <div className="card-glow rounded-3xl p-8 animate-fade w-full">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
+                    <h2 className="text-xl font-bold" style={{color: 'var(--text-main)'}}>{T.menuLeader}</h2>
+                    <button onClick={() => setView('dashboard')} className="font-bold hover:text-slate-300 transition-colors" style={{color: 'var(--text-muted)'}}>{T.back}</button>
+                </div>
+
+                <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
+                    {exams.map(e => (
+                        <button key={e.id} onClick={() => setActiveSubject(e.subject)} className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all border ${activeSubject === e.subject ? 'bg-emerald-800 border-emerald-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-500'}`}>{e.subject}</button>
+                    ))}
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-right border-separate border-spacing-y-2">
+                        <thead>
+                            <tr className="text-xs font-bold uppercase tracking-wider" style={{color: 'var(--text-muted)'}}>
+                                <th className="px-4 py-2">#</th>
+                                <th className="px-4 py-2">الاسم</th>
+                                <th className="px-4 py-2">{T.score}</th>
+                                <th className="px-4 py-2">{T.attempts}</th>
+                                <th className="px-4 py-2">الوقت (ث)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filtered.map((item, i) => (
+                                <tr key={item.id} className={`${i === 0 ? 'rank-1' : 'bg-slate-900/40 border border-slate-800'} rounded-2xl transition-all`}>
+                                    <td className="px-4 py-4 first:rounded-r-2xl">
+                                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${i === 0 ? 'bg-black/20' : 'bg-slate-800'} font-black`}>
+                                            {i + 1}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-4 font-bold">{item.student}</td>
+                                    <td className="px-4 py-4 font-black text-lg">{item.score}/{item.total}</td>
+                                    <td className="px-4 py-4 font-bold">{item.attempts || 0}</td>
+                                    <td className="px-4 py-4 last:rounded-l-2xl font-mono">{Math.round(item.totalTimes)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                {exams.length === 0 ? <p className="text-center py-10 opacity-40">{T.noExams}</p> : filtered.length === 0 && <p className="text-center py-10 opacity-40">{T.noResults}</p>}
+            </div>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+</script>
+
+</body>
+</html>
