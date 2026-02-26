@@ -91,7 +91,9 @@
         .animate-fade { animation: fadeIn 0.15s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        .rank-1 { background: linear-gradient(135deg, #fbbf24, #d97706); color: #000 !important; font-weight: 800; box-shadow: 0 0 15px rgba(251, 191, 36, 0.3); }
+        .rank-gold { background: linear-gradient(135deg, #fbbf24, #d97706); color: #000 !important; font-weight: 800; box-shadow: 0 0 15px rgba(251, 191, 36, 0.3); }
+        .rank-silver { background: linear-gradient(135deg, #e2e8f0, #94a3b8); color: #000 !important; font-weight: 800; box-shadow: 0 0 15px rgba(148, 163, 184, 0.3); }
+        
         .rank-number { 
             background: #000; 
             color: #fff !important; 
@@ -577,7 +579,6 @@
         const [ans, setAns] = useState(null);
         const [timer, setTimer] = useState(60);
         const [start] = useState(Date.now());
-        const [attempts, setAttempts] = useState(0);
         const current = exam.questions[idx];
 
         useEffect(() => {
@@ -595,7 +596,6 @@
         const handle = useCallback((i) => { 
             if (ans !== null) return; 
             setAns(i); 
-            setAttempts(a => a + 1); 
             if (i === current.correct) setScore(s => s + 1); 
         }, [ans, current]);
 
@@ -605,7 +605,7 @@
             } else { 
                 const totalTimes = (Date.now() - start) / 1000;
                 await window.FB.addDoc(window.FB.collection(window.FB.db, "classroom"), { 
-                    subject: exam.subject, student: user.name, score, total: exam.questions.length, totalTimes, attempts, timestamp: window.FB.serverTimestamp()
+                    subject: exam.subject, student: user.name, score, total: exam.questions.length, totalTimes, timestamp: window.FB.serverTimestamp()
                 });
                 setDone(true);
             }
@@ -637,6 +637,7 @@
         const [data, setData] = useState([]);
         const [exams, setExams] = useState([]);
         const [activeSubject, setActiveSubject] = useState('');
+        
         useEffect(() => {
             const qExams = window.FB.query(window.FB.collection(window.FB.db, "exams"), window.FB.orderBy("timestamp", "desc"));
             const unsubExams = window.FB.onSnapshot(qExams, (snap) => {
@@ -644,19 +645,38 @@
                 setExams(currentExams);
                 if (currentExams.length > 0 && !activeSubject) setActiveSubject(currentExams[0].subject);
             });
+            
             const qScores = window.FB.query(window.FB.collection(window.FB.db, "classroom"), window.FB.orderBy("score", "desc"));
             const unsubScores = window.FB.onSnapshot(qScores, (snap) => {
                 const rawData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 const filteredMap = new Map();
+                const attemptCounts = new Map();
+
                 rawData.forEach(item => {
                     const key = `${item.student}_${item.subject}`;
-                    if(!filteredMap.has(key) || filteredMap.get(key).score < item.score) filteredMap.set(key, item);
+                    
+                    // حساب عدد مرات الامتحانات الحقيقية للمستخدم في هذه المادة
+                    attemptCounts.set(key, (attemptCounts.get(key) || 0) + 1);
+
+                    // الاحتفاظ بأفضل نتيجة فقط لعرضها في اللوحة
+                    if(!filteredMap.has(key) || filteredMap.get(key).score < item.score || (filteredMap.get(key).score === item.score && item.totalTimes < filteredMap.get(key).totalTimes)) {
+                        filteredMap.set(key, item);
+                    }
                 });
-                setData(Array.from(filteredMap.values()));
+                
+                // دمج عدد المحاولات الفعلي مع النتيجة النهائية
+                const finalData = Array.from(filteredMap.values()).map(item => ({
+                    ...item,
+                    realAttempts: attemptCounts.get(`${item.student}_${item.subject}`)
+                }));
+                
+                setData(finalData);
             });
             return () => { unsubExams(); unsubScores(); };
         }, []);
+        
         const filtered = useMemo(() => data.filter(d => d.subject === activeSubject).sort((a,b) => b.score - a.score || a.totalTimes - b.totalTimes), [data, activeSubject]);
+        
         return (
             <div className="card-glow rounded-3xl p-8 animate-fade w-full">
                 <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
@@ -670,17 +690,24 @@
                     <table className="w-full text-right border-separate border-spacing-y-3">
                         <thead><tr className="text-xs font-bold uppercase" style={{color: 'var(--text-muted)'}}><th className="px-4 py-2">#</th><th className="px-4 py-2">الاسم</th><th className="px-4 py-2">{T.score}</th><th className="px-4 py-2">{T.attempts}</th><th className="px-4 py-2">الوقت (ث)</th></tr></thead>
                         <tbody>
-                            {filtered.map((item, i) => (
-                                <tr key={item.id} className={`${i === 0 ? 'rank-1' : 'bg-slate-900/40 border border-slate-800'} rounded-2xl`}>
+                            {filtered.map((item, i) => {
+                                // ترتيب الألوان حسب المراكز المطلوبة
+                                let rankClass = 'bg-slate-900/40 border border-slate-800';
+                                if (i >= 0 && i <= 2) rankClass = 'rank-gold';
+                                else if (i >= 3 && i <= 9) rankClass = 'rank-silver';
+                                
+                                return (
+                                <tr key={item.id} className={`${rankClass} rounded-2xl`}>
                                     <td className="px-4 py-4 first:rounded-r-2xl">
                                         <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg rank-number font-black">{i + 1}</span>
                                     </td>
                                     <td className="px-4 py-4 font-bold">{item.student}</td>
                                     <td className="px-4 py-4 font-black text-lg">{item.score}/{item.total}</td>
-                                    <td className="px-4 py-4 font-bold">{item.attempts || 0}</td>
+                                    <td className="px-4 py-4 font-bold">{item.realAttempts || 1}</td>
                                     <td className="px-4 py-4 last:rounded-l-2xl font-mono">{Math.round(item.totalTimes)}</td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
