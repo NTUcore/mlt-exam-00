@@ -1,6 +1,6 @@
 {
   "name": "QR Attendance",
-  "short_name": "QR Att",
+  "short_name": "امتحان تجريبي",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
