@@ -72,7 +72,6 @@ background: var(--bg-main);
 color: var(--text-main);
 margin: 0;
 overflow-x: hidden;
-/* تسريع الانتقالات العامة */
 transition: background 0.05s ease, color 0.05s ease;
 }
 
@@ -104,7 +103,6 @@ font-size: 13px;
 font-weight: bold;
 cursor: pointer;
 user-select: none;
-/* جعل التفاعل فوري */
 transition: transform 0.05s ease, background-color 0.05s ease;
 color: #2d3748;
 background: white;
@@ -139,7 +137,6 @@ color: #000;
 }
 
 .input-formal { background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-main); }
-/* تسريع التحريك الابتدائي */
 .animate-fade { animation: fadeIn 0.1s ease-out forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 .rank-gold { background: linear-gradient(135deg, #fbbf24, #d97706); color: #000 !important; font-weight: 800; }
@@ -159,6 +156,20 @@ border: 1px solid var(--input-border);
 cursor: pointer;
 z-index: 50;
 }
+
+.notification-toast {
+position: fixed;
+bottom: 20px;
+right: 20px;
+background: #10b981;
+color: white;
+padding: 1rem 2rem;
+border-radius: 1rem;
+box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+z-index: 9999;
+animation: slideIn 0.3s ease-out;
+}
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 </style>
 </head>
 <body>
@@ -166,10 +177,42 @@ z-index: 50;
 <div id="root"></div>
 
 <script type="text/babel">
-const { useState, useEffect, useMemo, useCallback } = React;
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 const _AK = "c29uIG9mIGFiZA==";
 const _PK = "QVJBU1NfMjMxMDIz";
+
+// نظام الصوت المطور
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+const playSound = (freq, duration, type = 'sine', volume = 0.1) => {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + duration);
+};
+
+// صوت الواجهة الهادئ (أزرار)
+const playUIClick = () => playSound(150, 0.1, 'sine', 0.05);
+
+// صوت الإجابة الصحيحة (رسمي وفخم)
+const playCorrectSound = () => {
+    playSound(440, 0.2, 'sine', 0.08); // نغمة أولى
+    setTimeout(() => playSound(659.25, 0.3, 'sine', 0.05), 100); // نغمة ثانية متناغمة
+};
+
+// صوت الإجابة الخاطئة (رسمي وعميق)
+const playWrongSound = () => playSound(110, 0.4, 'triangle', 0.08);
+
+// صوت اختيار الفقرة (ببل شيت)
+const playOptionSelect = () => playSound(300, 0.05, 'sine', 0.03);
+
 
 const TRANSLATIONS = {
 AR: {
@@ -184,7 +227,8 @@ wrongPass: "الرمز غير صحيح! الدخول رفض", finishExam: "إن�
 attempts: "المحاولات", startBtn: "بدء الاختبار", passHeader: "كلمة المرور", delConfirm: "هل أنت متأكد من رغبتك في الحذف؟",
 deleteBtn: "حذف", score: "النتيجة", noExams: "لا توجد اختبارات متاحة", noResults: "لا توجد نتائج لهذه المادة",
 chooseMode: "اختر وضع الاختبار", normalMode: "النظام الحالي (سؤال بسؤال)", bubbleMode: "نظام ببل شيت (ورقة كاملة)",
-bubbleLeft: "قسم الاختيارات", bubbleRight: "قسم صح وخطأ", submitBubble: "إرسال ورقة ببل شيت", questionsArea: "الأسئلة", bubbleArea: "OMR ANSWER SHEET"
+bubbleLeft: "قسم الاختيارات", bubbleRight: "قسم صح وخطأ", submitBubble: "إرسال ورقة ببل شيت", questionsArea: "الأسئلة", bubbleArea: "OMR ANSWER SHEET",
+newExamAlert: "تم نشر امتحان جديد الآن!"
 },
 KU: {
 basmalah: "بەناوی خودایەک کە ئێمەی دروستکردووە و بۆ لای ئەویش دەگەڕێینەوە",
@@ -198,7 +242,8 @@ wrongPass: "کۆدەکە هەڵەیە! چوونەژوورەوە ڕەتکرایە
 attempts: "هەوڵەکان", startBtn: "دەستپێکردن", passHeader: "وشەی نهێنی", delConfirm: "ئایا دڵنیای لە سڕینەوە؟",
 deleteBtn: "سڕینەوە", score: "نمرە", noExams: "تاقیکردنەوە بەردەست نییە", noResults: "هیچ ئەنجامێک بۆ ئەم بابەتە نییە",
 chooseMode: "جۆری تاقیکردنەوە هەڵبژێرە", normalMode: "سیستەمی ئێستا", bubbleMode: "سیستەمی بڵ شیت",
-bubbleLeft: "بەشی هەڵبژاردن", bubbleRight: "بەشی ڕاست و هەڵە", submitBubble: "ناردنی وەرەقەی بڵ شیت", questionsArea: "پرسیارەکان", bubbleArea: "OMR ANSWER SHEET"
+bubbleLeft: "بەشی هەڵبژاردن", bubbleRight: "بەشی ڕاست و هەڵە", submitBubble: "ناردنی وەرەقەی بڵ شیت", questionsArea: "پرسیارەکان", bubbleArea: "OMR ANSWER SHEET",
+newExamAlert: "تاقیکردنەوەیەکی نوێ بڵاوکرایەوە!"
 },
 EN: {
 basmalah: "In the name of God, Who created us and to Whom we return",
@@ -212,7 +257,8 @@ wrongPass: "Incorrect code! Access denied", finishExam: "Finish Exam", totalTime
 attempts: "Attempts", startBtn: "Start Exam", passHeader: "Password", delConfirm: "Are you sure you want to delete?",
 deleteBtn: "Delete", score: "Score", noExams: "No exams available", noResults: "No results for this subject",
 chooseMode: "Choose Exam Mode", normalMode: "Normal (One by one)", bubbleMode: "Bubble Sheet (Full Page)",
-bubbleLeft: "Multiple Choice", bubbleRight: "True / False", submitBubble: "Submit Bubble Sheet", questionsArea: "Questions", bubbleArea: "OMR ANSWER SHEET"
+bubbleLeft: "Multiple Choice", bubbleRight: "True / False", submitBubble: "Submit Bubble Sheet", questionsArea: "Questions", bubbleArea: "OMR ANSWER SHEET",
+newExamAlert: "New exam published now!"
 },
 TR: {
 basmalah: "Bizi yaratan ve O'na döneceğimiz Allah'ın adıyla",
@@ -226,7 +272,8 @@ wrongPass: "Yanlıش kod! Eriشım reddedildi", finishExam: "Sınavı Bitir", to
 attempts: "Denemeler", startBtn: "Sınava Başla", passHeader: "Şifre", delConfirm: "Silmek istediğinizden emin misiniz?",
 deleteBtn: "Sil", score: "Puan", noExams: "Mevcut sınav yok", noResults: "Bu ders için sonuç yok",
 chooseMode: "Sınav Modu Seç", normalMode: "Normal (Sırayla)", bubbleMode: "Optik Form (Tam Sayfa)",
-bubbleLeft: "Çoktan Seçmeli", bubbleRight: "Doğru / Yanlıش", submitBubble: "Formu Gönder", questionsArea: "Sorular", bubbleArea: "OMR ANSWER SHEET"
+bubbleLeft: "Çoktan Seçmeli", bubbleRight: "Doğru / Yanlıش", submitBubble: "Formu Göندر", questionsArea: "Sorular", bubbleArea: "OMR ANSWER SHEET",
+newExamAlert: "Yeni sınav yayınlandı!"
 }
 };
 
@@ -239,12 +286,36 @@ const [user, setUser] = useState(null);
 const [view, setView] = useState('login');
 const [theme, setTheme] = useState('dark');
 const [authLoading, setAuthLoading] = useState(true);
+const [notification, setNotification] = useState(null);
 
 const T = TRANSLATIONS[lang] || TRANSLATIONS['AR'];
 
 useEffect(() => {
 document.body.setAttribute('data-theme', theme);
 }, [theme]);
+
+useEffect(() => {
+    if (view !== 'login' && user) {
+        const q = window.FB.query(window.FB.collection(window.FB.db, "exams"), window.FB.orderBy("timestamp", "desc"));
+        let initialLoad = true;
+        const unsubscribe = window.FB.onSnapshot(q, (snap) => {
+            if (initialLoad) {
+                initialLoad = false;
+                return;
+            }
+            snap.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    const data = change.doc.data();
+                    if (data.authorRole === 'admin') {
+                        setNotification(T.newExamAlert);
+                        setTimeout(() => setNotification(null), 5000);
+                    }
+                }
+            });
+        });
+        return () => unsubscribe();
+    }
+}, [view, user, lang]);
 
 useEffect(() => {
 const unsubscribe = window.FB.onAuthStateChanged(window.FB.auth, (firebaseUser) => {
@@ -261,12 +332,14 @@ return () => unsubscribe();
 }, []);
 
 const handleLogin = useCallback((userData) => {
+playUIClick();
 setUser(userData);
 setView('dashboard');
 localStorage.setItem('app_user_session', JSON.stringify(userData));
 }, []);
 
 const handleLogout = useCallback(() => {
+playUIClick();
 window.FB.auth.signOut();
 localStorage.removeItem('app_user_session');
 setUser(null);
@@ -277,6 +350,8 @@ if (authLoading) return null;
 
 return (
 <div className="min-h-screen p-4 flex flex-col items-center justify-center relative">
+{notification && <div className="notification-toast font-bold">🔔 {notification}</div>}
+
 {view === 'login' && <Login T={T} lang={lang} setLang={setLang} onLogin={handleLogin} setTheme={setTheme} theme={theme} />}
 {view !== 'login' && user && (
 <div className="w-full max-w-6xl space-y-8 animate-fade">
@@ -287,7 +362,7 @@ return (
 
 <div className="absolute left-1/2 -translate-x-1/2 top-10 flex gap-2">
 {['AR', 'KU', 'EN', 'TR'].map(l => (
-<button key={l} onClick={() => setLang(l)} className={`px-4 py-2 rounded-xl font-bold text-xs border ${lang === l ?
+<button key={l} onClick={() => { playUIClick(); setLang(l); }} className={`px-4 py-2 rounded-xl font-bold text-xs border ${lang === l ?
 'bg-red-800 text-white border-red-600' : 'bg-slate-900 text-gray-500 border-slate-700'}`}>{l}</button>
 ))}
 </div>
@@ -296,7 +371,7 @@ return (
 <button onClick={handleLogout} className="text-red-500 font-bold border border-red-900/50 px-6 py-2 rounded-xl text-sm hover:bg-red-950/30">
 {T.logout}
 </button>
-<button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="sun-toggle">
+<button onClick={() => { playUIClick(); setTheme(theme === 'dark' ? 'light' : 'dark'); }} className="sun-toggle">
 {theme === 'dark' ? '☀️' : '🌙'}
 </button>
 </div>
@@ -324,6 +399,7 @@ const [taken, setTaken] = useState(false);
 const [loading, setLoading] = useState(false);
 
 const check = async () => {
+playUIClick();
 setErr('');
 if (adminMode && !adminName.trim()) return;
 setLoading(true);
@@ -343,6 +419,7 @@ setLoading(false);
 };
 
 const submit = async () => {
+playUIClick();
 setLoading(true);
 try {
 if (!window.FB.auth.currentUser) await window.FB.signInAnonymously(window.FB.auth);
@@ -375,7 +452,7 @@ return (
 <div className="animate-fade w-full max-w-xl mx-auto">
 <div className="absolute top-10 left-1/2 -translate-x-1/2 flex gap-2">
 {['AR', 'KU', 'EN', 'TR'].map(l => (
-<button key={l} onClick={() => setLang(l)} className={`px-4 py-2 rounded-xl font-bold text-xs border ${lang === l ?
+<button key={l} onClick={() => { playUIClick(); setLang(l); }} className={`px-4 py-2 rounded-xl font-bold text-xs border ${lang === l ?
 'bg-red-800 text-white border-red-600' : 'bg-slate-900 text-gray-500 border-slate-700'}`}>{l}</button>
 ))}
 </div>
@@ -394,7 +471,7 @@ return (
 </div>
 }
 <button onClick={check} disabled={loading} className="w-full bg-red-800 text-white p-4 rounded-xl font-bold">{loading ? '...' : T.btnContinue}</button>
-<button onClick={() => setAdminMode(!adminMode)} className="text-2xl opacity-20">🗝️</button>
+<button onClick={() => { playUIClick(); setAdminMode(!adminMode); }} className="text-2xl opacity-20">🗝️</button>
 </div>
 ) : (
 <div className="space-y-4">
@@ -403,7 +480,7 @@ return (
 {!taken && !adminMode && <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Confirm Password" className="w-full p-4 rounded-xl input-formal text-center" />}
 {err && <p className={`text-sm font-bold ${err.includes('متاح') || err.includes('available') || err.includes('müsait') ? 'text-emerald-500' : 'text-red-500'}`}>{err}</p>}
 <button onClick={submit} disabled={loading} className="w-full bg-blue-800 text-white p-4 rounded-xl font-bold">{loading ? '...' : T.btnContinue}</button>
-<button onClick={() => { setStep(1); setErr(''); }} className="text-xs text-slate-500 underline">{T.back}</button>
+<button onClick={() => { playUIClick(); setStep(1); setErr(''); }} className="text-xs text-slate-500 underline">{T.back}</button>
 </div>
 )}
 </div>
@@ -421,7 +498,7 @@ const items = [
 return (
 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 {items.filter(i => i.show).map(item => (
-<button key={item.id} onClick={() => setView(item.id)} className={`p-8 rounded-3xl border flex flex-col items-center gap-4 ${item.color}`}>
+<button key={item.id} onClick={() => { playUIClick(); setView(item.id); }} className={`p-8 rounded-3xl border flex flex-col items-center gap-4 ${item.color}`}>
 <span className="text-6xl">{item.icon}</span>
 <span className="font-bold text-lg">{item.label}</span>
 </button>
@@ -449,7 +526,7 @@ return (
 <div className="card-glow rounded-3xl p-8 w-full overflow-hidden">
 <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
 <h2 className="text-xl font-bold">{T.menuMembers}</h2>
-<button onClick={() => setView('dashboard')} className="font-bold text-slate-400">{T.back}</button>
+<button onClick={() => { playUIClick(); setView('dashboard'); }} className="font-bold text-slate-400">{T.back}</button>
 </div>
 <div className="overflow-x-auto">
 <table className="w-full text-right">
@@ -475,6 +552,7 @@ const [sub, setSub] = useState('');
 const [raw, setRaw] = useState('');
 const [loading, setLoading] = useState(false);
 const publish = async () => {
+playUIClick();
 if (!sub || !raw) return;
 setLoading(true);
 try {
@@ -506,7 +584,7 @@ return (
 <input value={sub} onChange={e => setSub(e.target.value)} className="w-full p-4 rounded-xl input-formal" placeholder={T.subject} />
 <textarea value={raw} onChange={e => setRaw(e.target.value)} className="w-full h-64 p-4 rounded-xl input-formal font-mono" placeholder="q: Question?&#10;Option 1 ✅&#10;Option 2"></textarea>
 <button onClick={publish} disabled={loading} className="w-full bg-red-800 text-white p-4 rounded-xl font-bold">{loading ? '...' : T.publish}</button>
-<button onClick={() => setView('dashboard')} className="w-full text-slate-500 font-bold">{T.back}</button>
+<button onClick={() => { playUIClick(); setView('dashboard'); }} className="w-full text-slate-500 font-bold">{T.back}</button>
 </div>
 </div>
 );
@@ -524,6 +602,7 @@ return () => unsub();
 }, []);
 
 const del = async (e, id) => {
+playUIClick();
 e.stopPropagation();
 if (window.confirm(T.delConfirm)) await window.FB.deleteDoc(window.FB.doc(window.FB.db, "exams", id));
 };
@@ -541,10 +620,10 @@ return (
 <div className="card-glow rounded-[3rem] p-12 text-center space-y-8 max-w-xl mx-auto">
 <h2 className="text-2xl font-bold">{T.chooseMode}</h2>
 <div className="grid gap-4">
-<button onClick={() => setMode('normal')} className="p-6 rounded-2xl border border-blue-600 bg-blue-950/20 hover:bg-blue-600 font-bold transition-none">{T.normalMode}</button>
-<button onClick={() => setMode('bubble')} className="p-6 rounded-2xl border border-emerald-600 bg-emerald-950/20 hover:bg-emerald-600 font-bold transition-none">{T.bubbleMode}</button>
+<button onClick={() => { playUIClick(); setMode('normal'); }} className="p-6 rounded-2xl border border-blue-600 bg-blue-950/20 hover:bg-blue-600 font-bold transition-none">{T.normalMode}</button>
+<button onClick={() => { playUIClick(); setMode('bubble'); }} className="p-6 rounded-2xl border border-emerald-600 bg-emerald-950/20 hover:bg-emerald-600 font-bold transition-none">{T.bubbleMode}</button>
 </div>
-<button onClick={() => setActive(null)} className="text-slate-400 font-bold">{T.back}</button>
+<button onClick={() => { playUIClick(); setActive(null); }} className="text-slate-400 font-bold">{T.back}</button>
 </div>
 );
 }
@@ -553,7 +632,7 @@ return (
 <div className="card-glow rounded-3xl p-8 w-full">
 <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
 <h2 className="text-xl font-bold">{T.menuHall}</h2>
-<button onClick={() => setView('dashboard')} className="font-bold text-slate-400">{T.back}</button>
+<button onClick={() => { playUIClick(); setView('dashboard'); }} className="font-bold text-slate-400">{T.back}</button>
 </div>
 <div className="grid gap-4">
 {exams.length > 0 ? exams.map(e => (
@@ -563,7 +642,7 @@ return (
 <span className="text-[10px] text-slate-500 uppercase">By: {e.author} {e.authorRole === 'admin' ? '(Admin)' : ''}</span>
 </div>
 <div className="flex gap-2">
-<button onClick={() => setActive(e)} className="bg-blue-800 text-white px-8 py-3 rounded-xl font-bold transition-none">{T.startBtn}</button>
+<button onClick={() => { playUIClick(); setActive(e); }} className="bg-blue-800 text-white px-8 py-3 rounded-xl font-bold transition-none">{T.startBtn}</button>
 {canDelete(e) && <button onClick={(evt) => del(evt, e.id)} className="bg-red-900/30 text-red-200 px-4 py-2 rounded-xl text-xs font-bold transition-none">{T.deleteBtn}</button>}
 </div>
 </div>
@@ -574,6 +653,7 @@ return (
 };
 
 const TakeExam = ({ T, user, exam, exit }) => {
+const [examData, setExamData] = useState(exam);
 const [idx, setIdx] = useState(0);
 const [score, setScore] = useState(0);
 const [done, setDone] = useState(false);
@@ -581,10 +661,9 @@ const [ans, setAns] = useState(null);
 const [timer, setTimer] = useState(60);
 const [start] = useState(Date.now());
 
-// تعديل: فلترة الأسئلة الفارغة لضمان عدم ظهور "سؤال فارغ" في البداية أو الوسط
 const cleanQuestions = useMemo(() => {
-return exam.questions.filter(q => q.text && q.text.trim() !== "" && q.options.length > 0);
-}, [exam.questions]);
+return examData.questions.filter(q => q.text && q.text.trim() !== "" && q.options.length > 0);
+}, [examData.questions]);
 
 const current = useMemo(() => {
 const q = cleanQuestions[idx];
@@ -596,35 +675,64 @@ useEffect(() => {
 if(!current) return;
 setTimer(60);
 const t = setInterval(() => {
-setTimer(p => { if (p <= 1) { clearInterval(t); if (ans === null) setAns(-1); return 0; } return p - 1; });
+setTimer(p => { if (p <= 1) { clearInterval(t); if (ans === null) { playWrongSound(); setAns(-1); } return 0; } return p - 1; });
 }, 1000);
 if (ans !== null) clearInterval(t);
 return () => clearInterval(t);
 }, [idx, ans, current]);
 
+const removeQuestion = async (qIdx) => {
+    playUIClick();
+    if (!window.confirm(T.delConfirm)) return;
+    const newQuestions = examData.questions.filter((_, i) => i !== qIdx);
+    const examRef = window.FB.doc(window.FB.db, "exams", examData.id);
+    await window.FB.updateDoc(examRef, { questions: newQuestions });
+    setExamData(prev => ({...prev, questions: newQuestions}));
+    if (idx >= newQuestions.length) setIdx(Math.max(0, newQuestions.length - 1));
+};
+
+const handleAnswer = (i) => {
+    if(ans !== null) return;
+    setAns(i);
+    if(i === current.correct) {
+        playCorrectSound();
+        setScore(s => s + 1);
+    } else {
+        playWrongSound();
+    }
+};
+
 const next = async () => {
+playUIClick();
 if (idx + 1 < cleanQuestions.length) { setIdx(idx + 1); setAns(null); }
 else {
 const totalTimes = (Date.now() - start) / 1000;
-await window.FB.addDoc(window.FB.collection(window.FB.db, "classroom"), { subject: exam.subject, student: user.name, score, total: cleanQuestions.length, totalTimes, timestamp: window.FB.serverTimestamp() });
+await window.FB.addDoc(window.FB.collection(window.FB.db, "classroom"), { subject: examData.subject, student: user.name, score, total: cleanQuestions.length, totalTimes, timestamp: window.FB.serverTimestamp() });
 setDone(true);
 }
 };
 
-if (done) return <div className="card-glow p-12 text-center rounded-[3rem] animate-fade"><h2 className="text-yellow-500 text-3xl font-bold mb-8">{T.examDone}</h2><div className="text-6xl font-black mb-10">{score} / {cleanQuestions.length}</div><button onClick={exit} className="bg-blue-800 text-white px-12 py-4 rounded-2xl font-bold">{T.back}</button></div>;
+const isAdminOrOwner = user.role === 'admin' || examData.author === user.name;
+
+if (done) return <div className="card-glow p-12 text-center rounded-[3rem] animate-fade"><h2 className="text-yellow-500 text-3xl font-bold mb-8">{T.examDone}</h2><div className="text-6xl font-black mb-10">{score} / {cleanQuestions.length}</div><button onClick={() => { playUIClick(); exit(); }} className="bg-blue-800 text-white px-12 py-4 rounded-2xl font-bold">{T.back}</button></div>;
 if (!current) return <div className="p-10 text-center">{T.noExams}</div>;
 
 return (
 <div className="w-full max-w-3xl mx-auto py-6 animate-fade">
-<div className="flex justify-between text-blue-400 font-bold mb-4"><span>{exam.subject}</span><span>{idx + 1} / {cleanQuestions.length}</span></div>
+<div className="flex justify-between text-blue-400 font-bold mb-4"><span>{examData.subject}</span><span>{idx + 1} / {cleanQuestions.length}</span></div>
 <div className="w-full bg-slate-800 h-1.5 mb-6 rounded-full overflow-hidden">
 <div className="timer-bar" style={{ width: `${(timer / 60) * 100}%`, background: timer < 10 ? '#ef4444' : '#10b981' }}></div>
 </div>
-<div className="card-glow rounded-[3rem] p-10 space-y-10 flex flex-col items-center">
-<h3 className="text-3xl font-bold text-center">{current.text}</h3>
+<div className="card-glow rounded-[3rem] p-10 space-y-10 flex flex-col items-center relative">
+{isAdminOrOwner && (
+    <button onClick={() => removeQuestion(idx)} className="absolute top-6 left-6 text-red-500 hover:text-red-400 font-bold text-sm bg-red-900/20 px-3 py-1 rounded-lg">
+        {T.deleteBtn} 🗑️
+    </button>
+)}
+<h3 className="text-3xl font-bold text-center mt-4">{current.text}</h3>
 <div className="grid gap-4 w-full">
 {current.options.map((opt, i) => (
-<button key={i} onClick={() => ans === null && (setAns(i), i === current.correct && setScore(s => s + 1))} className={`w-full p-5 rounded-full text-center font-bold border-2 transition-none ${ans === null ?
+<button key={i} onClick={() => handleAnswer(i)} className={`w-full p-5 rounded-full text-center font-bold border-2 transition-none ${ans === null ?
 'hover:bg-white/5 border-slate-700' : (i === current.correct ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : (ans === i ? 'bg-red-500/20 border-red-500 text-red-400' : 'opacity-40 border-slate-800'))}`}>
 {opt}
 </button>
@@ -638,13 +746,14 @@ T.finishExam : T.nextQ}</button>}
 };
 
 const BubbleExam = ({ T, user, exam, exit }) => {
-// تعديل: فلترة الأسئلة الفارغة لضمان ظهور 75 سؤال حقيقي فقط
+const [examData, setExamData] = useState(exam);
+
 const cleanQuestions = useMemo(() => {
-return exam.questions.filter(q => q.text && q.text.trim() !== "" && q.options.length > 0).map(q => ({
+return examData.questions.filter(q => q.text && q.text.trim() !== "" && q.options.length > 0).map(q => ({
 ...q,
 options: q.options.filter(o => o.trim() !== "")
 }));
-}, [exam.questions]);
+}, [examData.questions]);
 
 const [answers, setAnswers] = useState(new Array(cleanQuestions.length).fill(null));
 const [done, setDone] = useState(false);
@@ -652,27 +761,44 @@ const [score, setScore] = useState(0);
 const [start] = useState(Date.now());
 const [loading, setLoading] = useState(false);
 
+const isAdminOrOwner = user.role === 'admin' || examData.author === user.name;
+
+const removeQuestion = async (qIdx) => {
+    playUIClick();
+    if (!window.confirm(T.delConfirm)) return;
+    const newQuestions = examData.questions.filter((_, i) => i !== qIdx);
+    const examRef = window.FB.doc(window.FB.db, "exams", examData.id);
+    await window.FB.updateDoc(examRef, { questions: newQuestions });
+    setExamData(prev => ({...prev, questions: newQuestions}));
+};
+
 const submit = async () => {
+playUIClick();
 setLoading(true);
 let finalScore = 0;
 answers.forEach((ans, i) => { if (ans === cleanQuestions[i].correct) finalScore++; });
 const totalTimes = (Date.now() - start) / 1000;
-await window.FB.addDoc(window.FB.collection(window.FB.db, "classroom"), { subject: exam.subject, student: user.name, score: finalScore, total: cleanQuestions.length, totalTimes, timestamp: window.FB.serverTimestamp() });
+await window.FB.addDoc(window.FB.collection(window.FB.db, "classroom"), { subject: examData.subject, student: user.name, score: finalScore, total: cleanQuestions.length, totalTimes, timestamp: window.FB.serverTimestamp() });
 setScore(finalScore); setDone(true); setLoading(false);
 };
 
-if (done) return <div className="card-glow p-12 text-center rounded-[3rem] animate-fade"><h2 className="text-yellow-500 text-3xl font-bold mb-8">{T.examDone}</h2><div className="text-6xl font-black mb-10">{score} / {cleanQuestions.length}</div><button onClick={exit} className="bg-blue-800 text-white px-12 py-4 rounded-2xl font-bold">{T.back}</button></div>;
+if (done) return <div className="card-glow p-12 text-center rounded-[3rem] animate-fade"><h2 className="text-yellow-500 text-3xl font-bold mb-8">{T.examDone}</h2><div className="text-6xl font-black mb-10">{score} / {cleanQuestions.length}</div><button onClick={() => { playUIClick(); exit(); }} className="bg-blue-800 text-white px-12 py-4 rounded-2xl font-bold">{T.back}</button></div>;
 
 return (
 <div className="animate-fade w-full max-w-4xl mx-auto py-6 space-y-8">
 <div className="card-glow rounded-3xl p-8 space-y-12">
 <div className="flex justify-between items-center border-b border-slate-700 pb-4">
-<h2 className="text-2xl font-bold text-blue-400">{exam.subject} - {T.questionsArea}</h2>
+<h2 className="text-2xl font-bold text-blue-400">{examData.subject} - {T.questionsArea}</h2>
 <span className="text-slate-400 font-bold">{cleanQuestions.length} {T.questionsArea}</span>
 </div>
 <div className="space-y-10">
 {cleanQuestions.map((q, idx) => (
-<div key={idx} className="pb-8 border-b border-slate-800/50 last:border-0">
+<div key={idx} className="pb-8 border-b border-slate-800/50 last:border-0 relative">
+{isAdminOrOwner && (
+    <button onClick={() => removeQuestion(idx)} className="absolute top-0 left-0 text-red-500 hover:text-red-400 text-xs bg-red-950/20 px-2 py-1 rounded">
+        حذف 🗑️
+    </button>
+)}
 <h4 className="font-bold text-xl mb-6">
 <span className="bg-blue-600 text-white px-3 py-1 rounded-lg ml-3 text-sm">{idx + 1}</span>
 {q.text}
@@ -701,7 +827,7 @@ return (
 <span className="text-[10px]">3rd Stage</span>
 </div>
 <div className="flex flex-col items-end gap-1">
-<span className="font-bold">SUBJECT: {exam.subject}</span>
+<span className="font-bold">SUBJECT: {examData.subject}</span>
 <span className="text-[10px]">Date: {new Date().toLocaleDateString()}</span>
 </div>
 </div>
@@ -717,7 +843,7 @@ return (
 {q.options.map((_, oIdx) => (
 <div key={oIdx} className="flex flex-col items-center">
 <span className="bubble-label">{String.fromCharCode(65 + oIdx)}</span>
-<div onClick={() => setAnswers(prev => { let n = [...prev]; n[idx] = oIdx; return n; })} className={`bubble ${answers[idx] === oIdx ?
+<div onClick={() => { playOptionSelect(); setAnswers(prev => { let n = [...prev]; n[idx] = oIdx; return n; }); }} className={`bubble ${answers[idx] === oIdx ?
 'active' : ''}`}>
 {String.fromCharCode(65 + oIdx)}
 </div>
@@ -738,14 +864,14 @@ return (
 <div className="flex gap-8">
 <div className="flex flex-col items-center">
 <span className="bubble-label text-slate-800 font-black">T</span>
-<div onClick={() => setAnswers(prev => { let n = [...prev]; n[idx] = 0; return n; })} className={`bubble ${answers[idx] === 0 ?
+<div onClick={() => { playOptionSelect(); setAnswers(prev => { let n = [...prev]; n[idx] = 0; return n; }); }} className={`bubble ${answers[idx] === 0 ?
 'active' : ''}`}>
 T
 </div>
 </div>
 <div className="flex flex-col items-center">
 <span className="bubble-label text-slate-800 font-black">F</span>
-<div onClick={() => setAnswers(prev => { let n = [...prev]; n[idx] = 1; return n; })} className={`bubble ${answers[idx] === 1 ?
+<div onClick={() => { playOptionSelect(); setAnswers(prev => { let n = [...prev]; n[idx] = 1; return n; }); }} className={`bubble ${answers[idx] === 1 ?
 'active' : ''}`}>
 F
 </div>
@@ -762,7 +888,7 @@ F
 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-black text-white'}`}>
 {loading ? '...' : T.submitBubble}
 </button>
-<button onClick={exit} className="w-full mt-4 text-slate-500 font-bold hover:text-slate-800 transition-none">{T.back}</button>
+<button onClick={() => { playUIClick(); exit(); }} className="w-full mt-4 text-slate-500 font-bold hover:text-slate-800 transition-none">{T.back}</button>
 </div>
 </div>
 </div>
@@ -801,10 +927,10 @@ return (
 <div className="card-glow rounded-3xl p-8 w-full overflow-hidden">
 <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
 <h2 className="text-xl font-bold">{T.menuLeader}</h2>
-<button onClick={() => setView('dashboard')} className="font-bold text-slate-400">{T.back}</button>
+<button onClick={() => { playUIClick(); setView('dashboard'); }} className="font-bold text-slate-400">{T.back}</button>
 </div>
 <div className="flex gap-2 overflow-x-auto pb-4 mb-6">
-{exams.map(e => <button key={e.id} onClick={() => setActiveSubject(e.subject)} className={`px-4 py-2 rounded-xl text-sm font-bold border transition-none ${activeSubject === e.subject ? 'bg-emerald-800 border-emerald-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-500'}`}>{e.subject}</button>)}
+{exams.map(e => <button key={e.id} onClick={() => { playUIClick(); setActiveSubject(e.subject); }} className={`px-4 py-2 rounded-xl text-sm font-bold border transition-none ${activeSubject === e.subject ? 'bg-emerald-800 border-emerald-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-500'}`}>{e.subject}</button>)}
 </div>
 <div className="overflow-x-auto">
 <table className="w-full text-right border-separate border-spacing-y-3">
