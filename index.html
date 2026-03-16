@@ -170,19 +170,6 @@ z-index: 9999;
 animation: slideIn 0.3s ease-out;
 }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-/* Chat Bubbles Style */
-.chat-bubble-user {
-background: #1d4ed8;
-color: white;
-border-radius: 1.5rem 1.5rem 0 1.5rem;
-}
-.chat-bubble-ai {
-background: var(--input-bg);
-color: var(--text-main);
-border-radius: 1.5rem 1.5rem 1.5rem 0;
-border: 1px solid var(--input-border);
-}
 </style>
 </head>
 <body>
@@ -199,24 +186,31 @@ const _PK = "QVJBU1NfMjMxMDIz";
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 const playSound = (freq, duration, type = 'sine', volume = 0.1) => {
-const oscillator = audioCtx.createOscillator();
-const gainNode = audioCtx.createGain();
-oscillator.type = type;
-oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
-gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
-gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-oscillator.connect(gainNode);
-gainNode.connect(audioCtx.destination);
-oscillator.start();
-oscillator.stop(audioCtx.currentTime + duration);
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + duration);
 };
 
+// صوت الواجهة الهادئ (أزرار)
 const playUIClick = () => playSound(150, 0.1, 'sine', 0.05);
+
+// صوت الإجابة الصحيحة (رسمي وفخم)
 const playCorrectSound = () => {
-playSound(440, 0.2, 'sine', 0.08);
-setTimeout(() => playSound(659.25, 0.3, 'sine', 0.05), 100);
+    playSound(440, 0.2, 'sine', 0.08); // نغمة أولى
+    setTimeout(() => playSound(659.25, 0.3, 'sine', 0.05), 100); // نغمة ثانية متناغمة
 };
+
+// صوت الإجابة الخاطئة (رسمي وعميق)
 const playWrongSound = () => playSound(110, 0.4, 'triangle', 0.08);
+
+// صوت اختيار الفقرة (ببل شيت)
 const playOptionSelect = () => playSound(300, 0.05, 'sine', 0.03);
 
 
@@ -234,8 +228,7 @@ attempts: "المحاولات", startBtn: "بدء الاختبار", passHeader:
 deleteBtn: "حذف", score: "النتيجة", noExams: "لا توجد اختبارات متاحة", noResults: "لا توجد نتائج لهذه المادة",
 chooseMode: "اختر وضع الاختبار", normalMode: "النظام الحالي (سؤال بسؤال)", bubbleMode: "نظام ببل شيت (ورقة كاملة)",
 bubbleLeft: "قسم الاختيارات", bubbleRight: "قسم صح وخطأ", submitBubble: "إرسال ورقة ببل شيت", questionsArea: "الأسئلة", bubbleArea: "OMR ANSWER SHEET",
-newExamAlert: "تم نشر امتحان جديد الآن!",
-menuAi: "AI Chat - جيميناي", aiPlaceholder: "اسأل جيميناي أي شيء... (اشرح، لخص، أنشئ أسئلة)", send: "إرسال"
+newExamAlert: "تم نشر امتحان جديد الآن!"
 },
 KU: {
 basmalah: "بەناوی خودایەک کە ئێمەی دروستکردووە و بۆ لای ئەویش دەگەڕێینەوە",
@@ -250,8 +243,7 @@ attempts: "هەوڵەکان", startBtn: "دەستپێکردن", passHeader: "و�
 deleteBtn: "سڕینەوە", score: "نمرە", noExams: "تاقیکردنەوە بەردەست نییە", noResults: "هیچ ئەنجامێک بۆ ئەم بابەتە نییە",
 chooseMode: "جۆری تاقیکردنەوە هەڵبژێرە", normalMode: "سیستەمی ئێستا", bubbleMode: "سیستەمی بڵ شیت",
 bubbleLeft: "بەشی هەڵبژاردن", bubbleRight: "بەشی ڕاست و هەڵە", submitBubble: "ناردنی وەرەقەی بڵ شیت", questionsArea: "پرسیارەکان", bubbleArea: "OMR ANSWER SHEET",
-newExamAlert: "تاقیکردنەوەیەکی نوێ بڵاوکرایەوە!",
-menuAi: "AI Chat - جەمیناي", aiPlaceholder: "لە جەمینای بپرسە... (ڕوونکردنەوە، کورتکردنەوە)", send: "ناردن"
+newExamAlert: "تاقیکردنەوەیەکی نوێ بڵاوکرایەوە!"
 },
 EN: {
 basmalah: "In the name of God, Who created us and to Whom we return",
@@ -266,8 +258,7 @@ attempts: "Attempts", startBtn: "Start Exam", passHeader: "Password", delConfirm
 deleteBtn: "Delete", score: "Score", noExams: "No exams available", noResults: "No results for this subject",
 chooseMode: "Choose Exam Mode", normalMode: "Normal (One by one)", bubbleMode: "Bubble Sheet (Full Page)",
 bubbleLeft: "Multiple Choice", bubbleRight: "True / False", submitBubble: "Submit Bubble Sheet", questionsArea: "Questions", bubbleArea: "OMR ANSWER SHEET",
-newExamAlert: "New exam published now!",
-menuAi: "AI Chat - Gemini", aiPlaceholder: "Ask Gemini anything...", send: "Send"
+newExamAlert: "New exam published now!"
 },
 TR: {
 basmalah: "Bizi yaratan ve O'na döneceğimiz Allah'ın adıyla",
@@ -280,22 +271,14 @@ seatTaken: "Koltuk dolu, giriş için kod girin", seatFree: "Koltuk müsait! Kod
 wrongPass: "Yanlıش kod! Eriشım reddedildi", finishExam: "Sınavı Bitir", totalTimeText: "Toplam Süre",
 attempts: "Denemeler", startBtn: "Sınava Başla", passHeader: "Şifre", delConfirm: "Silmek istediğinizden emin misiniz?",
 deleteBtn: "Sil", score: "Puan", noExams: "Mevcut sınav yok", noResults: "Bu ders için sonuç yok",
-chooseMode: "Sınav Modu Seç", normalMode: "Normal (Sırayla)", bubbleMode: "Optیک Form (Tam Sayفا)",
+chooseMode: "Sınav Modu Seç", normalMode: "Normal (Sırayla)", bubbleMode: "Optik Form (Tam Sayfa)",
 bubbleLeft: "Çoktan Seçmeli", bubbleRight: "Doğru / Yanlıش", submitBubble: "Formu Göندر", questionsArea: "Sorular", bubbleArea: "OMR ANSWER SHEET",
-newExamAlert: "Yeni sınav yayınlandı!",
-menuAi: "AI Chat - Gemini", aiPlaceholder: "Gemini'ye sor...", send: "Gönder"
+newExamAlert: "Yeni sınav yayınlandı!"
 }
 };
 
 const SEAT_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
 const SEAT_NUMBERS = Array.from({ length: 39 }, (_, i) => i + 1);
-
-// أيقونة جيميناي الرسمية
-const GeminiIcon = ({ size = 24, className = "" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="currentColor" />
-  </svg>
-);
 
 const App = () => {
 const [lang, setLang] = useState('AR');
@@ -312,26 +295,26 @@ document.body.setAttribute('data-theme', theme);
 }, [theme]);
 
 useEffect(() => {
-if (view !== 'login' && user) {
-const q = window.FB.query(window.FB.collection(window.FB.db, "exams"), window.FB.orderBy("timestamp", "desc"));
-let initialLoad = true;
-const unsubscribe = window.FB.onSnapshot(q, (snap) => {
-if (initialLoad) {
-initialLoad = false;
-return;
-}
-snap.docChanges().forEach((change) => {
-if (change.type === "added") {
-const data = change.doc.data();
-if (data.authorRole === 'admin') {
-setNotification(T.newExamAlert);
-setTimeout(() => setNotification(null), 5000);
-}
-}
-});
-});
-return () => unsubscribe();
-}
+    if (view !== 'login' && user) {
+        const q = window.FB.query(window.FB.collection(window.FB.db, "exams"), window.FB.orderBy("timestamp", "desc"));
+        let initialLoad = true;
+        const unsubscribe = window.FB.onSnapshot(q, (snap) => {
+            if (initialLoad) {
+                initialLoad = false;
+                return;
+            }
+            snap.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    const data = change.doc.data();
+                    if (data.authorRole === 'admin') {
+                        setNotification(T.newExamAlert);
+                        setTimeout(() => setNotification(null), 5000);
+                    }
+                }
+            });
+        });
+        return () => unsubscribe();
+    }
 }, [view, user, lang]);
 
 useEffect(() => {
@@ -398,7 +381,6 @@ return (
 {view === 'create' && <CreateExam T={T} user={user} setView={setView} />}
 {view === 'hall' && <ExamHall T={T} user={user} setView={setView} />}
 {view === 'leaderboard' && <Leaderboard T={T} setView={setView} user={user} />}
-{view === 'aichat' && <AiChat T={T} user={user} setView={setView} />}
 </div>
 )}
 </div>
@@ -510,15 +492,14 @@ const Dashboard = ({ T, user, setView }) => {
 const items = [
 { id: 'create', label: T.menuCreate, icon: '📝', color: 'bg-red-950/40 border-red-900', show: true },
 { id: 'hall', label: T.menuHall, icon: '🏛️', color: 'bg-blue-950/40 border-blue-900', show: true },
-{ id: 'aichat', label: T.menuAi, icon: <GeminiIcon size={64} className="text-violet-400" />, color: 'bg-violet-950/40 border-violet-900', show: true },
 { id: 'leaderboard', label: T.menuLeader, icon: '🏆', color: 'bg-emerald-950/40 border-emerald-900', show: true },
 { id: 'members', label: T.menuMembers, icon: '👥', color: 'bg-slate-900 border-slate-700', show: user.role === 'admin' }
 ];
 return (
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 {items.filter(i => i.show).map(item => (
 <button key={item.id} onClick={() => { playUIClick(); setView(item.id); }} className={`p-8 rounded-3xl border flex flex-col items-center gap-4 ${item.color}`}>
-<span className="text-6xl flex items-center justify-center h-16 w-16">{item.icon}</span>
+<span className="text-6xl">{item.icon}</span>
 <span className="font-bold text-lg">{item.label}</span>
 </button>
 ))}
@@ -701,24 +682,24 @@ return () => clearInterval(t);
 }, [idx, ans, current]);
 
 const removeQuestion = async (qIdx) => {
-playUIClick();
-if (!window.confirm(T.delConfirm)) return;
-const newQuestions = examData.questions.filter((_, i) => i !== qIdx);
-const examRef = window.FB.doc(window.FB.db, "exams", examData.id);
-await window.FB.updateDoc(examRef, { questions: newQuestions });
-setExamData(prev => ({...prev, questions: newQuestions}));
-if (idx >= newQuestions.length) setIdx(Math.max(0, newQuestions.length - 1));
+    playUIClick();
+    if (!window.confirm(T.delConfirm)) return;
+    const newQuestions = examData.questions.filter((_, i) => i !== qIdx);
+    const examRef = window.FB.doc(window.FB.db, "exams", examData.id);
+    await window.FB.updateDoc(examRef, { questions: newQuestions });
+    setExamData(prev => ({...prev, questions: newQuestions}));
+    if (idx >= newQuestions.length) setIdx(Math.max(0, newQuestions.length - 1));
 };
 
 const handleAnswer = (i) => {
-if(ans !== null) return;
-setAns(i);
-if(i === current.correct) {
-playCorrectSound();
-setScore(s => s + 1);
-} else {
-playWrongSound();
-}
+    if(ans !== null) return;
+    setAns(i);
+    if(i === current.correct) {
+        playCorrectSound();
+        setScore(s => s + 1);
+    } else {
+        playWrongSound();
+    }
 };
 
 const next = async () => {
@@ -733,8 +714,7 @@ setDone(true);
 
 const isAdminOrOwner = user.role === 'admin' || examData.author === user.name;
 
-if (done) return <div className="card-glow p-12 text-center rounded-[3rem] animate-fade"><h2 className="text-yellow-500 text-3xl font-bold mb-8">{T.examDone}</h2><div className="text-6xl font-black mb-10">{score} / {cleanQuestions.length}</div><button onClick={() => { playUIClick();
-exit(); }} className="bg-blue-800 text-white px-12 py-4 rounded-2xl font-bold">{T.back}</button></div>;
+if (done) return <div className="card-glow p-12 text-center rounded-[3rem] animate-fade"><h2 className="text-yellow-500 text-3xl font-bold mb-8">{T.examDone}</h2><div className="text-6xl font-black mb-10">{score} / {cleanQuestions.length}</div><button onClick={() => { playUIClick(); exit(); }} className="bg-blue-800 text-white px-12 py-4 rounded-2xl font-bold">{T.back}</button></div>;
 if (!current) return <div className="p-10 text-center">{T.noExams}</div>;
 
 return (
@@ -745,9 +725,9 @@ return (
 </div>
 <div className="card-glow rounded-[3rem] p-10 space-y-10 flex flex-col items-center relative">
 {isAdminOrOwner && (
-<button onClick={() => removeQuestion(idx)} className="absolute top-6 left-6 text-red-500 hover:text-red-400 font-bold text-sm bg-red-900/20 px-3 py-1 rounded-lg">
-{T.deleteBtn} 🗑️
-</button>
+    <button onClick={() => removeQuestion(idx)} className="absolute top-6 left-6 text-red-500 hover:text-red-400 font-bold text-sm bg-red-900/20 px-3 py-1 rounded-lg">
+        {T.deleteBtn} 🗑️
+    </button>
 )}
 <h3 className="text-3xl font-bold text-center mt-4">{current.text}</h3>
 <div className="grid gap-4 w-full">
@@ -784,12 +764,12 @@ const [loading, setLoading] = useState(false);
 const isAdminOrOwner = user.role === 'admin' || examData.author === user.name;
 
 const removeQuestion = async (qIdx) => {
-playUIClick();
-if (!window.confirm(T.delConfirm)) return;
-const newQuestions = examData.questions.filter((_, i) => i !== qIdx);
-const examRef = window.FB.doc(window.FB.db, "exams", examData.id);
-await window.FB.updateDoc(examRef, { questions: newQuestions });
-setExamData(prev => ({...prev, questions: newQuestions}));
+    playUIClick();
+    if (!window.confirm(T.delConfirm)) return;
+    const newQuestions = examData.questions.filter((_, i) => i !== qIdx);
+    const examRef = window.FB.doc(window.FB.db, "exams", examData.id);
+    await window.FB.updateDoc(examRef, { questions: newQuestions });
+    setExamData(prev => ({...prev, questions: newQuestions}));
 };
 
 const submit = async () => {
@@ -802,8 +782,7 @@ await window.FB.addDoc(window.FB.collection(window.FB.db, "classroom"), { subjec
 setScore(finalScore); setDone(true); setLoading(false);
 };
 
-if (done) return <div className="card-glow p-12 text-center rounded-[3rem] animate-fade"><h2 className="text-yellow-500 text-3xl font-bold mb-8">{T.examDone}</h2><div className="text-6xl font-black mb-10">{score} / {cleanQuestions.length}</div><button onClick={() => { playUIClick();
-exit(); }} className="bg-blue-800 text-white px-12 py-4 rounded-2xl font-bold">{T.back}</button></div>;
+if (done) return <div className="card-glow p-12 text-center rounded-[3rem] animate-fade"><h2 className="text-yellow-500 text-3xl font-bold mb-8">{T.examDone}</h2><div className="text-6xl font-black mb-10">{score} / {cleanQuestions.length}</div><button onClick={() => { playUIClick(); exit(); }} className="bg-blue-800 text-white px-12 py-4 rounded-2xl font-bold">{T.back}</button></div>;
 
 return (
 <div className="animate-fade w-full max-w-4xl mx-auto py-6 space-y-8">
@@ -816,9 +795,9 @@ return (
 {cleanQuestions.map((q, idx) => (
 <div key={idx} className="pb-8 border-b border-slate-800/50 last:border-0 relative">
 {isAdminOrOwner && (
-<button onClick={() => removeQuestion(idx)} className="absolute top-0 left-0 text-red-500 hover:text-red-400 text-xs bg-red-950/20 px-2 py-1 rounded">
-حذف 🗑️
-</button>
+    <button onClick={() => removeQuestion(idx)} className="absolute top-0 left-0 text-red-500 hover:text-red-400 text-xs bg-red-950/20 px-2 py-1 rounded">
+        حذف 🗑️
+    </button>
 )}
 <h4 className="font-bold text-xl mb-6">
 <span className="bg-blue-600 text-white px-3 py-1 rounded-lg ml-3 text-sm">{idx + 1}</span>
@@ -864,8 +843,7 @@ return (
 {q.options.map((_, oIdx) => (
 <div key={oIdx} className="flex flex-col items-center">
 <span className="bubble-label">{String.fromCharCode(65 + oIdx)}</span>
-<div onClick={() => { playOptionSelect(); setAnswers(prev => { let n = [...prev]; n[idx] = oIdx; return n; });
-}} className={`bubble ${answers[idx] === oIdx ?
+<div onClick={() => { playOptionSelect(); setAnswers(prev => { let n = [...prev]; n[idx] = oIdx; return n; }); }} className={`bubble ${answers[idx] === oIdx ?
 'active' : ''}`}>
 {String.fromCharCode(65 + oIdx)}
 </div>
@@ -886,16 +864,14 @@ return (
 <div className="flex gap-8">
 <div className="flex flex-col items-center">
 <span className="bubble-label text-slate-800 font-black">T</span>
-<div onClick={() => { playOptionSelect(); setAnswers(prev => { let n = [...prev]; n[idx] = 0; return n; });
-}} className={`bubble ${answers[idx] === 0 ?
+<div onClick={() => { playOptionSelect(); setAnswers(prev => { let n = [...prev]; n[idx] = 0; return n; }); }} className={`bubble ${answers[idx] === 0 ?
 'active' : ''}`}>
 T
 </div>
 </div>
 <div className="flex flex-col items-center">
 <span className="bubble-label text-slate-800 font-black">F</span>
-<div onClick={() => { playOptionSelect(); setAnswers(prev => { let n = [...prev]; n[idx] = 1; return n; });
-}} className={`bubble ${answers[idx] === 1 ?
+<div onClick={() => { playOptionSelect(); setAnswers(prev => { let n = [...prev]; n[idx] = 1; return n; }); }} className={`bubble ${answers[idx] === 1 ?
 'active' : ''}`}>
 F
 </div>
@@ -971,129 +947,6 @@ return (
 ))}
 </tbody>
 </table>
-</div>
-</div>
-);
-};
-
-// --- نظام الذكاء الاصطناعي (Gemini) المستقر جداً ---
-const AiChat = ({ T, setView, user }) => {
-const [messages, setMessages] = useState([
-{ role: 'ai', text: `أهلاً بك يا ${user.name}، أنا جيميناي ذكاء اصطناعي عالمي. كيف يمكنني مساعدتك اليوم؟ يمكنني تلخيص دروسك، شرح الفقرات المعقدة، أو حتى تحويل أي نص أو صورة لأسئلة اختبار.` }
-]);
-const [input, setInput] = useState('');
-const [loading, setLoading] = useState(false);
-const [imgBase64, setImgBase64] = useState(null);
-const chatEndRef = useRef(null);
-
-const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-useEffect(() => scrollToBottom(), [messages]);
-
-const handleImage = (e) => {
-const file = e.target.files[0];
-if (!file) return;
-const reader = new FileReader();
-reader.onload = () => setImgBase64(reader.result.split(',')[1]);
-reader.readAsDataURL(file);
-};
-
-const sendToGemini = async () => {
-if (!input.trim() && !imgBase64) return;
-playUIClick();
-const userMsg = input;
-const currentImg = imgBase64;
-setMessages(prev => [...prev, { role: 'user', text: userMsg, img: currentImg ? `data:image/png;base64,${currentImg}` : null }]);
-setInput('');
-setImgBase64(null);
-setLoading(true);
-
-const apiKey = ""; // سيتم تزويده في بيئة التنفيذ
-// استخدام الإصدار المستقر v1beta لضمان الاتصال المباشر
-const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-const fetchWithRetry = async (payload, retries = 5) => {
-  let delay = 1000;
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) throw new Error("Connection failed");
-      return await response.json();
-    } catch (e) {
-      if (i === retries - 1) throw e;
-      await new Promise(r => setTimeout(r, delay));
-      delay *= 2;
-    }
-  }
-};
-
-try {
-  const parts = [{ text: `User Name: ${user.name}\nContext: You are a professional AI assistant in an exam environment. Be precise and helpful.\nQuery: ${userMsg}` }];
-  if (currentImg) {
-    parts.push({ inlineData: { mimeType: "image/png", data: currentImg } });
-  }
-
-  const payload = {
-    contents: [{ parts }],
-    generationConfig: { maxOutputTokens: 2048, temperature: 0.7 }
-  };
-
-  const result = await fetchWithRetry(payload);
-  const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text || "عذراً، لم أتلقَّ رداً.";
-  
-  setMessages(prev => [...prev, { role: 'ai', text: aiText }]);
-} catch (error) {
-  setMessages(prev => [...prev, { role: 'ai', text: "حدث خطأ بسيط في الاتصال السحابي. يرجى إعادة إرسال رسالتك، أنا جاهز دائماً." }]);
-} finally {
-  setLoading(false);
-}
-};
-
-return (
-<div className="card-glow rounded-3xl p-4 md:p-8 w-full max-w-4xl mx-auto flex flex-col h-[80vh]">
-<div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
-<h2 className="text-xl font-bold flex items-center gap-3">
-  <GeminiIcon size={28} className="text-violet-400" />
-  {T.menuAi}
-</h2>
-<button onClick={() => { playUIClick(); setView('dashboard'); }} className="font-bold text-slate-400">{T.back}</button>
-</div>
-
-<div className="flex-1 overflow-y-auto space-y-4 p-2">
-{messages.map((m, i) => (
-<div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-<div className={`max-w-[85%] p-4 shadow-sm ${m.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`}>
-{m.img && <img src={m.img} className="max-w-xs rounded-lg mb-2 border border-white/20" />}
-<p className="whitespace-pre-wrap leading-relaxed text-sm md:text-base">{m.text}</p>
-</div>
-</div>
-))}
-{loading && <div className="flex justify-start animate-pulse"><div className="chat-bubble-ai p-4 flex items-center gap-2"><GeminiIcon size={16} className="animate-spin text-violet-400" /> جاري التحليل والبحث...</div></div>}
-<div ref={chatEndRef} />
-</div>
-
-<div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
-{imgBase64 && <div className="text-xs text-blue-400 flex items-center gap-2">📸 تم التقاط الصورة للمراجعة...</div>}
-<div className="flex gap-2">
-<label className="bg-slate-800 p-3 rounded-xl cursor-pointer hover:bg-slate-700 flex items-center">
-<input type="file" accept="image/*" className="hidden" onChange={handleImage} />
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-</label>
-<input
-value={input}
-onChange={e => setInput(e.target.value)}
-onKeyDown={e => e.key === 'Enter' && sendToGemini()}
-className="flex-1 p-3 rounded-xl input-formal"
-placeholder={T.aiPlaceholder}
-/>
-<button onClick={sendToGemini} disabled={loading} className="bg-violet-700 px-6 py-3 rounded-xl font-bold hover:bg-violet-600 flex items-center gap-2 transition-all">
-<GeminiIcon size={18} />
-{T.send}
-</button>
-</div>
 </div>
 </div>
 );
