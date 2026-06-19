@@ -6,9 +6,9 @@
 <title> الامتحان تجريبي </title>
 <link rel="manifest" href="manifest.json">
 <!-- Scripts -->
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <!-- Firebase SDKs -->
@@ -182,20 +182,53 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
 const _AK = "c29uIG9mIGFiZA==";
 const _PK = "QVJBU1NfMjMxMDIz";
 
-// نظام الصوت المطور
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// دالة آمنة للتعامل مع localStorage
+const safeStorage = {
+    getItem: (key) => {
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            return null;
+        }
+    },
+    setItem: (key, value) => {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            // localStorage محظور أو غير متاح
+        }
+    },
+    removeItem: (key) => {
+        try {
+            localStorage.removeItem(key);
+        } catch (e) {
+            // localStorage محظور أو غير متاح
+        }
+    }
+};
+
+// نظام الصوت المطور - تم النقل إلى داخل دالة
+let audioCtx = null;
+
+const getAudioContext = () => {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+};
 
 const playSound = (freq, duration, type = 'sine', volume = 0.1) => {
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
+    const ctx = getAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
     oscillator.type = type;
-    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
+    gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
     oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    gainNode.connect(ctx.destination);
     oscillator.start();
-    oscillator.stop(audioCtx.currentTime + duration);
+    oscillator.stop(ctx.currentTime + duration);
 };
 
 // صوت الواجهة الهادئ (أزرار)
@@ -262,17 +295,17 @@ newExamAlert: "New exam published now!"
 },
 TR: {
 basmalah: "Bizi yaratan ve O'na döneceğimiz Allah'ın adıyla",
-gate: "Giriش Portalı", enterInfo: "Sisteme erişmek için lütfen koltuğunuzu seçin",
+gate: "Giriş Portalı", enterInfo: "Sisteme erişmek için lütfen koltuğunuzu seçin",
 labelSeat: "Koltuk Numarası", btnContinue: "Devam Et", passLabel: "Giriş Kodu",
-createPass: "Bu koltuk için شifre oluشtur", menuMembers: "Üye Kayıtları", menuCreate: "Sınav Oluştur",
+createPass: "Bu koltuk için şifre oluştur", menuMembers: "Üye Kayıtları", menuCreate: "Sınav Oluştur",
 menuHall: "Sınav Salonu", menuLeader: "Liderlik Tablosu", subject: "Ders Adı", publish: "Sınavı Yayınla",
 back: "Geri", examDone: "Sınav başarıyla tamamlandı", nextQ: "Sonraki Soru", logout: "Çıkış Yap",
 seatTaken: "Koltuk dolu, giriş için kod girin", seatFree: "Koltuk müsait! Kodunuzu belirleyin",
-wrongPass: "Yanlıش kod! Eriشım reddedildi", finishExam: "Sınavı Bitir", totalTimeText: "Toplam Süre",
+wrongPass: "Yanlış kod! Erişim reddedildi", finishExam: "Sınavı Bitir", totalTimeText: "Toplam Süre",
 attempts: "Denemeler", startBtn: "Sınava Başla", passHeader: "Şifre", delConfirm: "Silmek istediğinizden emin misiniz?",
 deleteBtn: "Sil", score: "Puan", noExams: "Mevcut sınav yok", noResults: "Bu ders için sonuç yok",
 chooseMode: "Sınav Modu Seç", normalMode: "Normal (Sırayla)", bubbleMode: "Optik Form (Tam Sayfa)",
-bubbleLeft: "Çoktan Seçmeli", bubbleRight: "Doğru / Yanlıش", submitBubble: "Formu Göندر", questionsArea: "Sorular", bubbleArea: "OMR ANSWER SHEET",
+bubbleLeft: "Çoktan Seçmeli", bubbleRight: "Doğru / Yanlış", submitBubble: "Formu Gönder", questionsArea: "Sorular", bubbleArea: "OMR ANSWER SHEET",
 newExamAlert: "Yeni sınav yayınlandı!"
 }
 };
@@ -319,7 +352,7 @@ useEffect(() => {
 
 useEffect(() => {
 const unsubscribe = window.FB.onAuthStateChanged(window.FB.auth, (firebaseUser) => {
-const savedData = localStorage.getItem('app_user_session');
+const savedData = safeStorage.getItem('app_user_session');
 if (firebaseUser && savedData) {
 setUser(JSON.parse(savedData));
 setView('dashboard');
@@ -335,13 +368,13 @@ const handleLogin = useCallback((userData) => {
 playUIClick();
 setUser(userData);
 setView('dashboard');
-localStorage.setItem('app_user_session', JSON.stringify(userData));
+safeStorage.setItem('app_user_session', JSON.stringify(userData));
 }, []);
 
 const handleLogout = useCallback(() => {
 playUIClick();
 window.FB.auth.signOut();
-localStorage.removeItem('app_user_session');
+safeStorage.removeItem('app_user_session');
 setUser(null);
 setView('login');
 }, []);
